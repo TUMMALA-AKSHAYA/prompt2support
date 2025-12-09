@@ -2,49 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
-  }
+/* === Visual variables === */
+:root {
+  --page-bg: #fbfbfb;
+  --text-primary: #0b1220;
+  --muted: #5b6b7a;
+  --accent: #9b6cff;
+  --grid-stroke: #e9e9ea;
 }
 
-@layer components {
-  .card {
-    @apply bg-white rounded-lg shadow-md p-6;
-  }
-  
-  .btn-primary {
-    @apply bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-all duration-200;
-  }
-
-  .agent-step {
-    @apply border-l-4 border-primary pl-4 py-2 mb-4 bg-blue-50 rounded-r-lg;
-  }
-
-  .badge {
-    @apply inline-block px-3 py-1 rounded-full text-sm font-semibold;
-  }
+/* hero background grid */
+.hero-bg {
+  background-color: var(--page-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Crect width='80' height='80' fill='%23fbfbfb'/%3E%3Cpath d='M1 1H79M1 79H79M1 1V79' stroke='%23e9e9ea' stroke-width='0.8'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-position: top left;
 }
 
-.gradient-bg {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* pastel shapes: position with dedicated classes (keeps markup clean) */
+.pastel-shape { position: absolute; border-radius: 18px; box-shadow: 0 12px 30px rgba(14,22,37,0.06); transform-origin: center; }
+.shape-left { left: 0; top: 9rem; width: 11rem; height: 11rem; background: var(--pastel-pink,#f7dff9); transform: rotate(6deg); z-index: 5; }
+.shape-center { left: 50%; transform: translateX(-50%) rotate(-3deg); top: 24rem; width: 12rem; height: 12rem; background: var(--pastel-yellow,#fff7dd); z-index: 5; }
+.shape-right { right: 2rem; top: 10rem; width: 11rem; height: 11rem; background: var(--pastel-blue,#dff7ff); transform: rotate(3deg); z-index: 5; }
+
+/* pastel cards */
+.pastel-card { position: relative; z-index: 10; }
+
+/* hero content must be above shapes */
+.hero-content { position: relative; z-index: 30; }
+
+/* force headline visibility */
+.hero-heading {
+  color: var(--text-primary) !important;
+  opacity: 1 !important;
+  z-index: 40 !important;
+  position: relative !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0px !important;
 }
 
-.agent-animation {
-  animation: slideIn 0.5s ease-out;
+/* CTA pill */
+.cta-pill {
+  border-radius: 9999px;
+  padding: .65rem 1.25rem;
+  border: 2px solid rgba(155,108,255,0.14);
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.88));
+  z-index: 35;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+/* Force light theme even if OS prefers dark */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: light; }
+  html, body, #root { background-color: var(--page-bg) !important; color: var(--text-primary) !important; }
+  .dark, .dark * { background-color: transparent !important; color: inherit !important; border-color: rgba(0,0,0,0.06) !important; }
+}
+
+/* Last-resort override: neutralize any parent opacity/filter that hides text */
+.hero-bg, .hero-bg * {
+  opacity: 1 !important;
+  filter: none !important;
 }
