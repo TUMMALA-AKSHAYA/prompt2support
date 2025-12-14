@@ -1,26 +1,22 @@
 {
-  "name": "backend",
+  "name": "prompt2support-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Autonomous multi-agent customer support system",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2",
+    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "mammoth": "^1.11.0",
-    "multer": "^2.0.2",
-    "node-fetch": "^3.3.2",
-    "pdf-parse": "^2.4.5"
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "pdf-parse": "^1.1.1",
+    "mammoth": "^1.6.0",
+    "@google/generative-ai": "^0.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.0.1"
   }
 }

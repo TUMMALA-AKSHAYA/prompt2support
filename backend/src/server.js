@@ -1,10 +1,8 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const multer = require('multer');
 const path = require('path');
-
-dotenv.config();
+const fs = require('fs');
 
 const app = express();
 
@@ -13,43 +11,59 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// File upload configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// Create necessary directories
+const uploadDir = path.join(__dirname, '../uploads');
+const vectorDir = path.join(__dirname, '../vectors');
 
-const upload = multer({ 
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|doc|docx|txt/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
-    cb(new Error('Only PDF, DOC, DOCX, and TXT files are allowed'));
-  }
-});
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-// Routes
-app.use('/api/documents', require('./routes/documents'));
-app.use('/api/queries', require('./routes/queries'));
-app.use('/api/analytics', require('./routes/analytics'));
+if (!fs.existsSync(vectorDir)) {
+  fs.mkdirSync(vectorDir, { recursive: true });
+}
+
+// Initialize vector store
+const vectorStore = require('./services/vectorStore');
+vectorStore.initialize().catch(err => console.error('Vector store init error:', err));
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date(),
+    geminiKeyLoaded: !!process.env.GEMINI_API_KEY,
+    port: process.env.PORT || 5001
+  });
 });
 
-const PORT = process.env.PORT || 5000;
+// API Routes
+const documentsRoutes = require('./routes/documents');
+const queriesRoutes = require('./routes/queries');
+const analyticsRoutes = require('./routes/analytics');
+
+app.use('/api/documents', documentsRoutes);
+app.use('/api/queries', queriesRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
+
+const PORT = process.env.PORT || 5001;
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`\n🚀 PROMPT2SUPPORT BACKEND`);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Gemini API key: ${process.env.GEMINI_API_KEY ? 'LOADED' : 'MISSING!'}`);
+  console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  console.log(`\n📡 API Endpoints:`);
+  console.log(`   POST http://localhost:${PORT}/api/documents/upload`);
+  console.log(`   GET  http://localhost:${PORT}/api/documents/stats`);
+  console.log(`   POST http://localhost:${PORT}/api/queries/process`);
+  console.log(`   GET  http://localhost:${PORT}/api/queries/history\n`);
 });
 
-module.exports = { upload };
+module.exports = app;

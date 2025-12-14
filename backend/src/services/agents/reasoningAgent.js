@@ -1,14 +1,12 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 class ReasoningAgent {
   async reason(query, understanding, retrievedData) {
     const { retrievedChunks, sources } = retrievedData;
     
-    // Build context from retrieved chunks
     const context = retrievedChunks
       .map((chunk, idx) => `[Source ${idx + 1}: ${chunk.metadata.filename}]\n${chunk.text}`)
       .join('\n\n---\n\n');
@@ -34,22 +32,15 @@ Instructions:
 Provide your response:`;
 
     try {
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      });
-
-      const response = message.content[0].text;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const answerText = response.text();
 
       return {
         agent: 'Reasoning',
         status: 'completed',
         result: {
-          answer: response,
+          answer: answerText,
           sourcesUsed: sources,
           confidence: this.calculateConfidence(retrievedChunks)
         },
@@ -63,9 +54,7 @@ Provide your response:`;
 
   calculateConfidence(chunks) {
     if (chunks.length === 0) return 'low';
-    
     const avgRelevance = chunks.reduce((sum, chunk) => sum + chunk.relevance, 0) / chunks.length;
-    
     if (avgRelevance > 0.7) return 'high';
     if (avgRelevance > 0.4) return 'medium';
     return 'low';

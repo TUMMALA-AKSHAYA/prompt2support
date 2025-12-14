@@ -1,8 +1,7 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 class UnderstandingAgent {
   async analyze(query) {
@@ -21,17 +20,14 @@ Provide a JSON response with:
 Respond ONLY with valid JSON, no other text.`;
 
     try {
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      });
-
-      const responseText = message.content[0].text;
-      const cleanedResponse = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const responseText = response.text();
+      
+      const cleanedResponse = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
       
       return {
         agent: 'Understanding',
@@ -42,7 +38,6 @@ Respond ONLY with valid JSON, no other text.`;
     } catch (error) {
       console.error('Understanding Agent error:', error);
       
-      // Fallback analysis
       return {
         agent: 'Understanding',
         status: 'completed',
