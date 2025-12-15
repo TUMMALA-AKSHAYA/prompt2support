@@ -1,22 +1,10 @@
-// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class', // keep class strategy (we won't add .dark)
-  content: ['./src/**/*.{js,jsx,ts,tsx,html}', './public/index.html'],
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
-    extend: {
-      colors: {
-        pastelPink: '#f7dff9',
-        pastelYellow: '#fff7dd',
-        pastelBlue: '#dff7ff',
-        accentPurple: '#9b6cff',
-        heroBg: '#fbfbfb',
-        textDark: '#0b1220'
-      },
-      fontFamily: {
-        display: ['"Playfair Display"', 'serif'],
-        body: ['Inter', 'sans-serif'],
-      },
-    },
+    extend: {},
   },
   plugins: [],
-};
+}
