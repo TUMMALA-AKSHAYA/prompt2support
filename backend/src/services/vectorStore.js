@@ -1,91 +1,126 @@
-const { generateEmbedding, cosineSimilarity } = require('../utils/embeddings');
-const fs = require('fs').promises;
-const path = require('path');
+// src/services/vectorStore.js
+const { generateEmbedding, cosineSimilarity } = require("../utils/embeddings");
+const fs = require("fs").promises;
+const path = require("path");
 
 class VectorStore {
   constructor() {
     this.vectors = [];
-    this.storePath = path.join(__dirname, '../../vectors/store.json');
+    this.storePath = path.join(__dirname, "../../vectors/store.json");
   }
 
+  /**
+   * Load stored vectors on server start
+   * MUST be called once in server.js
+   */
   async initialize() {
     try {
-      const data = await fs.readFile(this.storePath, 'utf-8');
+      const data = await fs.readFile(this.storePath, "utf-8");
       this.vectors = JSON.parse(data);
-      console.log(`Loaded ${this.vectors.length} vectors from storage`);
+      console.log(`VectorStore: Loaded ${this.vectors.length} vectors`);
     } catch (error) {
-      console.log('No existing vector store found, starting fresh');
+      console.log("VectorStore: No existing store found, starting fresh");
       this.vectors = [];
     }
   }
 
+  /**
+   * Add a processed document (from DocumentProcessor)
+   */
   async addDocument(documentData) {
     const { filename, chunks, metadata } = documentData;
-    
+
+    // Remove existing vectors for the same file
+    this.vectors = this.vectors.filter(
+      v => v.metadata.filename !== filename
+    );
+
+    let addedCount = 0;
+
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      const embedding = await generateEmbedding(chunk.text);
-      
+
+      // Skip empty chunks
+      if (!chunk.text || chunk.text.trim().length === 0) continue;
+
+      // Generate embedding safely
+      let embedding = await generateEmbedding(chunk.text);
+      if (embedding.embedding) embedding = embedding.embedding; // support for object return
+
       this.vectors.push({
         id: `${filename}_chunk_${i}`,
         text: chunk.text,
-        embedding: embedding,
+        embedding,
         metadata: {
           ...metadata,
-          filename: filename,
+          filename,
           chunkIndex: i,
           startChar: chunk.startChar,
           endChar: chunk.endChar
         }
       });
+
+      addedCount++;
     }
 
     await this.save();
-    return this.vectors.length;
+    return addedCount;
   }
 
+  /**
+   * Semantic search
+   */
   async search(query, topK = 5) {
-    const queryEmbedding = await generateEmbedding(query);
-    
-    const results = this.vectors.map(vector => ({
-      ...vector,
-      similarity: cosineSimilarity(queryEmbedding, vector.embedding)
+    if (this.vectors.length === 0) return [];
+
+    let queryEmbedding = await generateEmbedding(query);
+    if (queryEmbedding.embedding) queryEmbedding = queryEmbedding.embedding;
+
+    const scoredResults = this.vectors.map(vector => ({
+      text: vector.text,
+      metadata: vector.metadata,
+      relevance: cosineSimilarity(queryEmbedding, vector.embedding)
     }));
 
-    results.sort((a, b) => b.similarity - a.similarity);
-    
-    return results.slice(0, topK).map(result => ({
-      text: result.text,
-      metadata: result.metadata,
-      relevance: result.similarity
-    }));
+    scoredResults.sort((a, b) => b.relevance - a.relevance);
+
+    return scoredResults.slice(0, topK);
   }
 
+  /**
+   * Persist vectors to disk
+   */
   async save() {
     await fs.mkdir(path.dirname(this.storePath), { recursive: true });
-    await fs.writeFile(this.storePath, JSON.stringify(this.vectors, null, 2));
+    await fs.writeFile(
+      this.storePath,
+      JSON.stringify(this.vectors, null, 2)
+    );
   }
 
+  /**
+   * Clear all stored vectors (for demo reset)
+   */
   async clear() {
     this.vectors = [];
     await this.save();
   }
 
+  /**
+   * Analytics & dashboard support
+   */
   getStats() {
     const fileStats = {};
-    
+
     this.vectors.forEach(vector => {
-      const filename = vector.metadata.filename;
-      if (!fileStats[filename]) {
-        fileStats[filename] = 0;
-      }
-      fileStats[filename]++;
+      const file = vector.metadata.filename;
+      fileStats[file] = (fileStats[file] || 0) + 1;
     });
 
     return {
       totalVectors: this.vectors.length,
       documentsIndexed: Object.keys(fileStats).length,
-      fileStats: fileStats
+      fileStats
     };
   }
 }
