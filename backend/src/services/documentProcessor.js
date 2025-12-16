@@ -1,11 +1,13 @@
-const pdf = require('pdf-parse');
-const mammoth = require('mammoth');
 const fs = require('fs').promises;
 const path = require('path');
 
+// Correct way to import pdf-parse
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+
 class DocumentProcessor {
   constructor() {
-    this.chunkSize = 500; // characters per chunk
+    this.chunkSize = 500;
     this.chunkOverlap = 50;
   }
 
@@ -14,6 +16,8 @@ class DocumentProcessor {
     let text = '';
 
     try {
+      console.log('[DocumentProcessor] Processing:', filePath);
+      
       switch (extension) {
         case '.pdf':
           text = await this.processPDF(filePath);
@@ -29,7 +33,16 @@ class DocumentProcessor {
           throw new Error(`Unsupported file type: ${extension}`);
       }
 
+      console.log('[DocumentProcessor] Text extracted, length:', text.length);
+
+      if (!text || text.trim().length === 0) {
+        throw new Error('No text could be extracted from the document');
+      }
+
       const chunks = this.chunkText(text);
+      
+      console.log('[DocumentProcessor] Created', chunks.length, 'chunks');
+
       return {
         filename: path.basename(filePath),
         type: extension,
@@ -43,24 +56,47 @@ class DocumentProcessor {
         }
       };
     } catch (error) {
-      console.error(`Error processing document: ${error.message}`);
+      console.error('[DocumentProcessor] Error:', error.message);
       throw error;
     }
   }
 
   async processPDF(filePath) {
-    const dataBuffer = await fs.readFile(filePath);
-    const data = await pdf(dataBuffer);
-    return data.text;
+    try {
+      console.log('[DocumentProcessor] Reading PDF file...');
+      const dataBuffer = await fs.readFile(filePath);
+      
+      console.log('[DocumentProcessor] Parsing PDF, size:', dataBuffer.length, 'bytes');
+      
+      // Call pdf-parse as a function with the buffer
+      const data = await pdfParse(dataBuffer);
+      
+      console.log('[DocumentProcessor] PDF parsed successfully, text length:', data.text.length);
+      
+      return data.text;
+    } catch (error) {
+      console.error('[DocumentProcessor] PDF parse error:', error);
+      throw new Error(`Failed to parse PDF: ${error.message}`);
+    }
   }
 
   async processDOCX(filePath) {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value;
+    try {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    } catch (error) {
+      console.error('[DocumentProcessor] DOCX parse error:', error);
+      throw new Error(`Failed to parse DOCX: ${error.message}`);
+    }
   }
 
   async processTXT(filePath) {
-    return await fs.readFile(filePath, 'utf-8');
+    try {
+      return await fs.readFile(filePath, 'utf-8');
+    } catch (error) {
+      console.error('[DocumentProcessor] TXT read error:', error);
+      throw new Error(`Failed to read TXT: ${error.message}`);
+    }
   }
 
   chunkText(text) {
@@ -70,7 +106,6 @@ class DocumentProcessor {
     while (start < text.length) {
       let end = start + this.chunkSize;
       
-      // Try to break at sentence boundaries
       if (end < text.length) {
         const sentenceEnd = text.lastIndexOf('.', end);
         if (sentenceEnd > start) {
@@ -78,11 +113,15 @@ class DocumentProcessor {
         }
       }
 
-      chunks.push({
-        text: text.slice(start, end).trim(),
-        startChar: start,
-        endChar: end
-      });
+      const chunkText = text.slice(start, end).trim();
+      
+      if (chunkText.length > 0) {
+        chunks.push({
+          text: chunkText,
+          startChar: start,
+          endChar: end
+        });
+      }
 
       start = end - this.chunkOverlap;
     }
