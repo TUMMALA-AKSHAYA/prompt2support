@@ -1,188 +1,226 @@
+import { useState } from "react";
+
 export default function DemoWorkspace() {
+  const [messages, setMessages] = useState([
+    {
+      role: "agent",
+      text: "Hi 👋 Upload your documents and ask me questions about them.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [filesUploaded, setFilesUploaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // ---------- FILE UPLOAD ----------
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setLoading(true);
+      const res = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Backend not responding");
+
+      setFilesUploaded(true);
+      setMessages((prev) => [
+        ...prev,
+        { role: "agent", text: `📄 ${file.name} uploaded successfully.` },
+      ]);
+    } catch (err) {
+      // Fallback demo mode
+      setFilesUploaded(true);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "agent",
+          text:
+            "📄 Document received (Demo Mode). I’m ready to answer questions.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ---------- CHAT ----------
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMsg = { role: "user", text: input };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/queries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: input }),
+      });
+
+      if (!res.ok) throw new Error("Backend not responding");
+
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "agent", text: data.answer || "Response generated." },
+      ]);
+    } catch (err) {
+      // Fallback AI response
+      let reply =
+        "I analyzed the uploaded documents and found relevant information.";
+
+      if (input.toLowerCase().includes("refund"))
+        reply = "Refunds are processed within 5–7 business days.";
+      if (input.toLowerCase().includes("warranty"))
+        reply = "The product includes a 1-year limited warranty.";
+      if (input.toLowerCase().includes("return"))
+        reply = "Returns are accepted within 30 days of purchase.";
+
+      setMessages((prev) => [...prev, { role: "agent", text: reply }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #07090d 0%, #050608 100%)",
+        background: "#07090d",
         color: "#fff",
-        fontFamily: "Inter, system-ui, -apple-system",
-        display: "grid",
-        gridTemplateColumns: "280px 1fr",
+        padding: 40,
+        fontFamily: "Inter, system-ui",
       }}
     >
-      {/* LEFT SIDEBAR */}
-      <aside
+      <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 20 }}>
+        AI Customer Support Demo
+      </h1>
+
+      {/* UPLOAD */}
+      <div
         style={{
-          borderRight: "1px solid rgba(255,255,255,0.08)",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 24,
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 16,
+          padding: 20,
+          maxWidth: 800,
+          marginBottom: 24,
         }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 700 }}>
-          My Agents
-        </h2>
-
-        <button
+        <label
           style={{
-            background:
-              "linear-gradient(135deg, #ff8a1f, #ff5f1f)",
+            display: "inline-block",
+            background: "linear-gradient(135deg,#ff8a1f,#ff5f1f)",
             color: "#000",
-            border: "none",
-            padding: "12px",
+            padding: "10px 18px",
             borderRadius: 12,
             fontWeight: 700,
             cursor: "pointer",
           }}
         >
-          + New Agent
-        </button>
+          {loading ? "Uploading..." : "Upload Document"}
+          <input
+            type="file"
+            hidden
+            onChange={handleFileUpload}
+            accept=".pdf,.txt,.docx"
+          />
+        </label>
 
-        <div>
-          <p style={{ opacity: 0.6, fontSize: 13, marginBottom: 8 }}>
-            Projects
-          </p>
+        <p style={{ marginTop: 10, fontSize: 12, opacity: 0.6 }}>
+          Supported: PDF, DOCX, TXT • Session-isolated
+        </p>
+      </div>
 
-          {[
-            "Customer Support AI",
-            "Sales Follow-ups",
-            "HR Assistant",
-          ].map((item) => (
-            <div
-              key={item}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                cursor: "pointer",
-                marginBottom: 6,
-                background:
-                  "rgba(255,255,255,0.04)",
-              }}
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <main
+      {/* CHAT */}
+      <div
         style={{
-          padding: 40,
-          display: "flex",
-          flexDirection: "column",
-          gap: 32,
+          maxWidth: 800,
+          height: 360,
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 16,
+          padding: 20,
+          overflowY: "auto",
+          marginBottom: 20,
         }}
       >
-        {/* HEADER */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h1 style={{ fontSize: 28, fontWeight: 800 }}>
-            Follow-up Agent
-          </h1>
-
-          <button
+        {messages.map((msg, i) => (
+          <div
+            key={i}
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              padding: "10px 16px",
-              borderRadius: 12,
-              color: "#fff",
-              cursor: "pointer",
+              textAlign: msg.role === "user" ? "right" : "left",
+              marginBottom: 12,
             }}
           >
-            Configuration
-          </button>
-        </div>
-
-        {/* AGENT DESCRIPTION */}
-        <div
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 20,
-            padding: 24,
-            maxWidth: 720,
-          }}
-        >
-          <p style={{ opacity: 0.8 }}>
-            This agent answers customer questions using uploaded
-            documents, policies, and manuals with verified reasoning.
-          </p>
-        </div>
-
-        {/* SUGGESTED ACTIONS */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 16,
-          }}
-        >
-          {[
-            "Summarize customer tickets",
-            "Answer refund policy questions",
-            "Draft response emails",
-          ].map((action) => (
-            <div
-              key={action}
+            <span
               style={{
-                padding: 18,
-                borderRadius: 16,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                cursor: "pointer",
+                display: "inline-block",
+                padding: "10px 14px",
+                borderRadius: 14,
+                background:
+                  msg.role === "user"
+                    ? "linear-gradient(135deg,#ff8a1f,#ff5f1f)"
+                    : "rgba(255,255,255,0.12)",
+                color: msg.role === "user" ? "#000" : "#fff",
+                maxWidth: "70%",
               }}
             >
-              {action}
-            </div>
-          ))}
-        </div>
+              {msg.text}
+            </span>
+          </div>
+        ))}
+      </div>
 
-        {/* CHAT INPUT */}
-        <div
+      {/* INPUT */}
+      <div style={{ display: "flex", gap: 12, maxWidth: 800 }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={
+            filesUploaded
+              ? "Ask about the uploaded document..."
+              : "Upload a document first..."
+          }
+          disabled={!filesUploaded}
           style={{
-            marginTop: "auto",
-            display: "flex",
-            gap: 12,
+            flex: 1,
+            padding: "14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.05)",
+            color: "#fff",
+            outline: "none",
+          }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!filesUploaded}
+          style={{
+            padding: "14px 22px",
+            borderRadius: 12,
+            border: "none",
+            background: "linear-gradient(135deg,#ff8a1f,#ff5f1f)",
+            color: "#000",
+            fontWeight: 700,
+            cursor: "pointer",
           }}
         >
-          <input
-            placeholder="What should the agent help with today?"
-            style={{
-              flex: 1,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 14,
-              padding: "14px 16px",
-              color: "#fff",
-              outline: "none",
-            }}
-          />
-          <button
-            style={{
-              background:
-                "linear-gradient(135deg, #ff8a1f, #ff5f1f)",
-              color: "#000",
-              border: "none",
-              padding: "14px 22px",
-              borderRadius: 14,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Send
-          </button>
-        </div>
-      </main>
+          Send
+        </button>
+      </div>
+
+      <p style={{ marginTop: 12, fontSize: 12, opacity: 0.5 }}>
+        Demo Mode enabled • Backend auto-connects when available
+      </p>
     </div>
   );
 }

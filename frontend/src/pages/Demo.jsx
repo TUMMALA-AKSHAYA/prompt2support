@@ -7,20 +7,47 @@ export default function Demo() {
     { role: "assistant", text: "Hi! Upload documents and ask me anything about them." }
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
 
-    setMessages([...messages, { role: "user", text: input }]);
+    const userMessage = input;
     setInput("");
 
-    // fake AI reply (replace with real API later)
-    setTimeout(() => {
+    // show user message immediately
+    setMessages(prev => [...prev, { role: "user", text: userMessage }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/queries", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query: userMessage })
+      });
+
+      const data = await res.json();
+
       setMessages(prev => [
         ...prev,
-        { role: "assistant", text: "I'm analyzing your documents using multiple AI agents." }
+        {
+          role: "assistant",
+          text: data.answer || "No response received from AI."
+        }
       ]);
-    }, 800);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "⚠️ Backend not connected. Running in demo mode."
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,7 +62,7 @@ export default function Demo() {
       {/* Grid */}
       <div className="demo-grid">
 
-        {/* LEFT: Controls */}
+        {/* LEFT: Upload */}
         <div className="demo-card">
           <h3>Knowledge Base</h3>
           <DocumentUpload />
@@ -65,6 +92,11 @@ export default function Demo() {
                 {m.text}
               </div>
             ))}
+            {loading && (
+              <div className="chat-bubble" style={{ opacity: 0.6 }}>
+                AI is thinking…
+              </div>
+            )}
           </div>
 
           <div className="chat-input">
@@ -73,8 +105,11 @@ export default function Demo() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && sendMessage()}
+              disabled={loading}
             />
-            <button onClick={sendMessage}>Send</button>
+            <button onClick={sendMessage} disabled={loading}>
+              Send
+            </button>
           </div>
         </div>
 

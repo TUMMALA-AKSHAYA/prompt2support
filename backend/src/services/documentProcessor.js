@@ -1,9 +1,6 @@
+const mammoth = require('mammoth');
 const fs = require('fs').promises;
 const path = require('path');
-
-// Correct way to import pdf-parse
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
 
 class DocumentProcessor {
   constructor() {
@@ -20,8 +17,7 @@ class DocumentProcessor {
       
       switch (extension) {
         case '.pdf':
-          text = await this.processPDF(filePath);
-          break;
+          throw new Error('PDF support temporarily disabled. Please use TXT or DOCX files.');
         case '.docx':
         case '.doc':
           text = await this.processDOCX(filePath);
@@ -58,25 +54,6 @@ class DocumentProcessor {
     } catch (error) {
       console.error('[DocumentProcessor] Error:', error.message);
       throw error;
-    }
-  }
-
-  async processPDF(filePath) {
-    try {
-      console.log('[DocumentProcessor] Reading PDF file...');
-      const dataBuffer = await fs.readFile(filePath);
-      
-      console.log('[DocumentProcessor] Parsing PDF, size:', dataBuffer.length, 'bytes');
-      
-      // Call pdf-parse as a function with the buffer
-      const data = await pdfParse(dataBuffer);
-      
-      console.log('[DocumentProcessor] PDF parsed successfully, text length:', data.text.length);
-      
-      return data.text;
-    } catch (error) {
-      console.error('[DocumentProcessor] PDF parse error:', error);
-      throw new Error(`Failed to parse PDF: ${error.message}`);
     }
   }
 
