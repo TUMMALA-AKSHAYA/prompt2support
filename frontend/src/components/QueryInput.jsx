@@ -31,6 +31,16 @@ const QueryInput = ({ onSubmit }) => {
             className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isLoading}
           />
+          <div className="flex gap-3">
+  <input
+    className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+    placeholder="Enter your question..."
+  />
+  <button className="bg-orange-400 text-black px-5 py-2 rounded-lg font-semibold hover:bg-orange-500">
+    Send
+  </button>
+</div>
+
           <button
             type="submit"
             disabled={isLoading}

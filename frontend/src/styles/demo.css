@@ -1,0 +1,74 @@
+.demo-container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #070b14, #0b1220);
+  color: #e6e8eb;
+  padding: 32px;
+}
+
+/* HEADER */
+.demo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* 👇 THIS IS THE KEY FIX */
+.demo-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr; /* LEFT fixed, RIGHT flexible */
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* CARD */
+.demo-card {
+  background: radial-gradient(
+    120% 120% at top left,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 24px;
+}
+
+/* CHAT PANEL */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 160px);
+}
+
+/* MESSAGES */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 6px;
+}
+
+/* INPUT BAR */
+.chat-input {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.chat-input input {
+  flex: 1;
+  background: #0b0f17;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: white;
+}
+
+.chat-input button {
+  background: linear-gradient(135deg, #ff8a1f, #ff5f1f);
+  border: none;
+  border-radius: 12px;
+  padding: 0 18px;
+  font-weight: 600;
+  cursor: pointer;
+}

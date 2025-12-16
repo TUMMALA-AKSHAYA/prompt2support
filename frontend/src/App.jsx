@@ -1,14 +1,9 @@
-import React from 'react';
-import './index.css';
-import Hero from './components/Hero';
+import Landing from "./pages/Landing";
+import DemoWorkspace from "./pages/DemoWorkspace";
 
-function App() {
-  return (
-    <div className="min-h-screen bg-[var(--page-bg)]">
-      <Hero />
-      {/* keep other routes/sections below if needed */}
-    </div>
-  );
+export default function App() {
+  if (window.location.pathname === "/demo") {
+    return <DemoWorkspace />;
+  }
+  return <Landing />;
 }
-
-export default App;
