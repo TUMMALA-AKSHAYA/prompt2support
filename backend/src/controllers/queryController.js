@@ -10,7 +10,7 @@ class QueryController {
       }
 
       const response = await axios.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
         {
           contents: [
             {
@@ -22,15 +22,12 @@ class QueryController {
         {
           params: {
             key: process.env.GEMINI_API_KEY
-          },
-          headers: {
-            "Content-Type": "application/json"
           }
         }
       );
 
       const answer =
-        response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
         "No AI response";
 
       res.json({ answer });
