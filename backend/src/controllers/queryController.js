@@ -5,17 +5,37 @@ class QueryController {
     try {
       const { query } = req.body;
 
-      if (!query) {
+      if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Query missing" });
       }
 
       const response = await axios.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
         {
           contents: [
             {
               role: "user",
-              parts: [{ text: query }]
+              parts: [
+                {
+                  text: `
+You are a professional customer support AI assistant.
+
+STRICT RESPONSE RULES:
+- Do NOT use markdown symbols (no *, **, #, ##, ---, tables, bullets).
+- Do NOT use emojis.
+- Do NOT use headings.
+- Do NOT use numbered or bulleted lists.
+- Write in clear, simple paragraphs.
+- Keep answers concise, professional, and human-like.
+- Respond exactly like ChatGPT in plain text.
+- If you lack user-specific data, explain politely and briefly.
+- Do not hallucinate personal details.
+
+User question:
+${query}
+`
+                }
+              ]
             }
           ]
         },
@@ -27,15 +47,15 @@ class QueryController {
       );
 
       const answer =
-        response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "No AI response";
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "I am unable to provide an answer at the moment.";
 
-      res.json({ answer });
+      res.json({ answer: answer.trim() });
 
     } catch (err) {
-      console.error("🔥 GEMINI ERROR:", err.response?.data || err.message);
+      console.error("Gemini error:", err.response?.data || err.message);
       res.status(500).json({
-        error: err.response?.data || err.message
+        error: "AI backend error. Please check API configuration."
       });
     }
   }
