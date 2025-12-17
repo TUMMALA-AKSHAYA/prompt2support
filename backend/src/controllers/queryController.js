@@ -1,74 +1,47 @@
-const orchestrator = require('../services/orchestrator');
+const axios = require("axios");
 
 class QueryController {
-  constructor() {
-    this.queryHistory = [];
-    console.log('[QueryController] Initialized');
-  }
-
   async processQuery(req, res) {
     try {
-      const { query, generateActions = false } = req.body;
+      const { query } = req.body;
 
       if (!query) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Query is required' 
-        });
+        return res.status(400).json({ error: "Query missing" });
       }
 
-      console.log('[QueryController] Processing query:', query);
+      const response = await axios.post(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent",
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: query }]
+            }
+          ]
+        },
+        {
+          params: {
+            key: process.env.GEMINI_API_KEY
+          },
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
 
-      const result = await orchestrator.processQuery(query, { generateActions });
+      const answer =
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "No AI response";
 
-      // Store in history
-      this.queryHistory.unshift({
-        id: Date.now().toString(),
-        query: query,
-        result: result,
-        timestamp: new Date()
-      });
+      res.json({ answer });
 
-      // Keep only last 50 queries
-      if (this.queryHistory.length > 50) {
-        this.queryHistory = this.queryHistory.slice(0, 50);
-      }
-
-      console.log('[QueryController] Query processed successfully');
-
-      res.json({
-        success: true,
-        data: result
-      });
-
-    } catch (error) {
-      console.error('[QueryController] Error:', error);
-      res.status(500).json({ 
-        success: false,
-        error: error.message 
-      });
-    }
-  }
-
-  async getHistory(req, res) {
-    try {
-      const limit = parseInt(req.query.limit) || 10;
-      
-      console.log('[QueryController] Returning history, count:', this.queryHistory.length);
-      
-      res.json({
-        success: true,
-        data: this.queryHistory.slice(0, limit)
-      });
-    } catch (error) {
-      console.error('[QueryController] History error:', error);
-      res.status(500).json({ 
-        success: false,
-        error: error.message 
+    } catch (err) {
+      console.error("🔥 GEMINI ERROR:", err.response?.data || err.message);
+      res.status(500).json({
+        error: err.response?.data || err.message
       });
     }
   }
 }
 
-// Export a singleton instance
 module.exports = new QueryController();

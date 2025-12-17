@@ -20,13 +20,17 @@ export default function Demo() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/queries", {
+      const res = await fetch("/api/queries/process", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ query: userMessage })
       });
+
+      if (!res.ok) {
+        throw new Error("Backend error");
+      }
 
       const data = await res.json();
 
@@ -38,17 +42,50 @@ export default function Demo() {
         }
       ]);
     } catch (err) {
+      console.error(err);
       setMessages(prev => [
         ...prev,
         {
           role: "assistant",
-          text: "⚠️ Backend not connected. Running in demo mode."
+          text: "⚠️ AI backend error. Please check server or API key."
         }
       ]);
     } finally {
       setLoading(false);
     }
   };
+  const handleUpload = async (formData) => {
+  try {
+    const res = await fetch("/api/documents/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error("Upload failed");
+    }
+
+    const data = await res.json();
+
+    setMessages(prev => [
+      ...prev,
+      {
+        role: "assistant",
+        text: "📄 Document uploaded successfully. You can now ask questions about it."
+      }
+    ]);
+  } catch (err) {
+    console.error(err);
+    setMessages(prev => [
+      ...prev,
+      {
+        role: "assistant",
+        text: "⚠️ Failed to upload document. Please try again."
+      }
+    ]);
+  }
+};
+
 
   return (
     <div className="demo-container">
@@ -65,7 +102,9 @@ export default function Demo() {
         {/* LEFT: Upload */}
         <div className="demo-card">
           <h3>Knowledge Base</h3>
-          <DocumentUpload />
+          
+          <DocumentUpload onUpload={handleUpload} />
+
 
           <div style={{ marginTop: "24px", color: "#9CA3AF", fontSize: "13px" }}>
             Supported: PDF, DOCX, TXT

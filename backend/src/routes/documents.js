@@ -1,38 +1,36 @@
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
 
-
-const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const documentController = require('../controllers/documentController');
 
-// Configure multer for file uploads
+// ✅ Proper Multer storage config
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|doc|docx|txt/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (extname && mimetype) {
-      return cb(null, true);
-    }
-    cb(new Error('Only PDF, DOC, DOCX, and TXT files are allowed'));
-  }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
 
-router.post('/upload', upload.single('document'), documentController.uploadDocument);
-router.get('/list', documentController.listDocuments);
-router.delete('/:id', documentController.deleteDocument);
-router.get('/stats', documentController.getStats);
+// ✅ Upload route
+router.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+
+  console.log("Uploaded:", req.file.originalname);
+
+  res.json({
+    success: true,
+    filename: req.file.originalname
+  });
+});
 
 module.exports = router;

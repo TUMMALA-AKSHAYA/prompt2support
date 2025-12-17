@@ -1,9 +1,9 @@
-import express from "express";
-import { handleQuery } from "../controllers/queryController.js";
-
+const express = require("express");
 const router = express.Router();
+const queryController = require("../controllers/queryController");
 
-// POST /api/queries
-router.post("/", handleQuery);
+router.post("/process", (req, res) =>
+  queryController.processQuery(req, res)
+);
 
-export default router;
+module.exports = router;
