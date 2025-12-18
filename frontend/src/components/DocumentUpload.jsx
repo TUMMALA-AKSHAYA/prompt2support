@@ -1,47 +1,64 @@
-import { Upload } from "lucide-react";
 import { useState } from "react";
 
-export default function DocumentUpload() {
+export default function DocumentUpload({ onUpload }) {
+  const [file, setFile] = useState(null);
   const [status, setStatus] = useState("");
 
-  const uploadFile = async (file) => {
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setStatus("");
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      setStatus("Please select a file first");
+      return;
+    }
+
     const formData = new FormData();
-    formData.append("file", file); // MUST be "file"
+
+    // ⚠️ THIS KEY MUST BE "file"
+    formData.append("file", file);
 
     try {
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-
-      setStatus("✅ Document uploaded successfully");
+      await onUpload(formData);
+      setStatus("Document uploaded successfully");
+      setFile(null);
     } catch (err) {
       console.error(err);
-      setStatus("❌ Upload failed");
+      setStatus("Upload failed");
     }
   };
 
   return (
-    <div className="upload-box">
-      <Upload size={26} />
-      <p>Upload a document</p>
-
+    <div>
       <input
         type="file"
-        hidden
-        id="doc-input"
-        onChange={(e) => uploadFile(e.target.files[0])}
+        accept=".pdf,.docx,.txt"
+        onChange={handleFileChange}
       />
 
-      <label htmlFor="doc-input" className="select-btn">
-        Select File
-      </label>
+      <button
+        onClick={handleUpload}
+        style={{
+          marginTop: "10px",
+          padding: "8px 14px",
+          background: "#ff8a1f",
+          border: "none",
+          borderRadius: "8px",
+          color: "#111",
+          cursor: "pointer",
+          fontWeight: "600"
+        }}
+      >
+        Upload
+      </button>
 
-      {status && <p style={{ marginTop: 8 }}>{status}</p>}
+      {status && (
+        <div style={{ marginTop: "8px", fontSize: "13px" }}>
+          {status}
+        </div>
+      )}
     </div>
   );
 }

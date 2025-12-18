@@ -23,10 +23,6 @@ if (!fs.existsSync(vectorDir)) {
   fs.mkdirSync(vectorDir, { recursive: true });
 }
 
-// Initialize vector store
-const vectorStore = require('./services/vectorStore');
-vectorStore.initialize().catch(err => console.error('Vector store init error:', err));
-
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

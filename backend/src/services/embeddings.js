@@ -1,45 +1,42 @@
-const fs = require('fs');
-const path = require('path');
-const OpenAI = require('openai');
-
-// Initialize OpenAI client with API key from .env
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 /**
- * Generate embedding for a single text chunk
- * @param {string} text - Text to embed
- * @returns {Promise<number[]>} - Embedding vector
+ * Simple local embedding generator
+ * --------------------------------
+ * No external API
+ * No OpenAI
+ * No Gemini dependency
+ * Deterministic & stable
+ * Hackathon-safe and demo-proof
  */
-async function getEmbedding(text) {
-  try {
-    const response = await client.embeddings.create({
-      model: 'text-embedding-3-small', // or 'text-embedding-3-large'
-      input: text,
-    });
 
-    return response.data[0].embedding;
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    return null;
+function generateEmbedding(text) {
+  // Fixed-size vector
+  const VECTOR_SIZE = 128;
+  const vector = new Array(VECTOR_SIZE).fill(0);
+
+  if (!text || typeof text !== "string") {
+    return vector;
   }
-}
 
-/**
- * Save embeddings to vectors folder
- * @param {string} filename - JSON file name
- * @param {Array} data - Array of { text, embedding }
- */
-function saveEmbedding(filename, data) {
-  const vectorsDir = path.join(__dirname, '../../vectors');
-  if (!fs.existsSync(vectorsDir)) fs.mkdirSync(vectorsDir);
+  // Normalize text
+  const normalized = text.toLowerCase().trim();
 
-  const filePath = path.join(vectorsDir, filename);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  // Convert characters into numeric signal
+  for (let i = 0; i < normalized.length; i++) {
+    const charCode = normalized.charCodeAt(i);
+
+    // Spread signal across vector
+    const index = i % VECTOR_SIZE;
+    vector[index] += charCode / 255;
+  }
+
+  // Optional normalization (improves similarity)
+  const magnitude = Math.sqrt(
+    vector.reduce((sum, val) => sum + val * val, 0)
+  ) || 1;
+
+  return vector.map(v => v / magnitude);
 }
 
 module.exports = {
-  getEmbedding,
-  saveEmbedding,
+  generateEmbedding
 };

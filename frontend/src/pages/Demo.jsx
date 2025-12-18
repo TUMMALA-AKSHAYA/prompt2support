@@ -3,6 +3,9 @@ import DocumentUpload from "../components/DocumentUpload";
 import { useState } from "react";
 
 export default function Demo() {
+  /* =========================
+     STATE
+     ========================= */
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -13,11 +16,11 @@ export default function Demo() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ Uploaded files (dummy + real)
-  const [uploadedFiles, setUploadedFiles] = useState([
-    "policy.pdf",
-    "warranty.docx"
-  ]);
+  // ✅ REAL uploaded files (no dummy data)
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
+  // ✅ Upload status
+  const [uploadStatus, setUploadStatus] = useState(null); // success | error | null
 
   /* =========================
      SEND MESSAGE
@@ -65,36 +68,42 @@ export default function Demo() {
      ========================= */
   const handleUpload = async (formData) => {
     try {
+      setUploadStatus(null);
+
       const res = await fetch("/api/documents/upload", {
         method: "POST",
         body: formData
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
       const data = await res.json();
 
-      // ✅ Extract filenames from uploaded files
-      const files = Array.from(formData.getAll("files")).map(
-        file => file.name
-      );
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Upload failed");
+      }
 
-      setUploadedFiles(prev => [...prev, ...files]);
+      const file = formData.get("file");
+      if (file) {
+        setUploadedFiles(prev => [...prev, file.name]);
+      }
+
+      setUploadStatus("success");
 
       setMessages(prev => [
         ...prev,
         {
           role: "assistant",
-          text: "Your document has been uploaded successfully. You can now ask questions related to it."
+          text: "Document uploaded successfully. I will now use it to answer your questions."
         }
       ]);
     } catch (err) {
       console.error(err);
+      setUploadStatus("error");
+
       setMessages(prev => [
         ...prev,
         {
           role: "assistant",
-          text: "The document upload failed. Please try again."
+          text: "Document upload failed. Please upload a TXT or DOCX file."
         }
       ]);
     }
@@ -119,18 +128,35 @@ export default function Demo() {
           <div className="upload-box">
             <DocumentUpload onUpload={handleUpload} />
             <div className="supported-text">
-              Supported formats: PDF, DOCX, TXT
+              Supported formats: TXT, DOCX (PDF preprocessing supported)
             </div>
+
+            {/* Upload Status */}
+            {uploadStatus === "success" && (
+              <div style={{ color: "#22c55e", fontSize: "13px", marginTop: "8px" }}>
+                Document uploaded successfully
+              </div>
+            )}
+
+            {uploadStatus === "error" && (
+              <div style={{ color: "#ef4444", fontSize: "13px", marginTop: "8px" }}>
+                Upload failed
+              </div>
+            )}
           </div>
 
-          {/* ✅ Uploaded Files */}
+          {/* Uploaded Files */}
           <div className="uploaded-files">
             <div className="files-title">Uploaded files</div>
-            <ul>
-              {uploadedFiles.map((file, idx) => (
-                <li key={idx}>{file}</li>
-              ))}
-            </ul>
+            {uploadedFiles.length === 0 ? (
+              <div className="supported-text">No documents uploaded yet</div>
+            ) : (
+              <ul>
+                {uploadedFiles.map((file, idx) => (
+                  <li key={idx}>{file}</li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Sample Queries */}

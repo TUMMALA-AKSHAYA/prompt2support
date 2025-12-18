@@ -1,4 +1,5 @@
 const axios = require("axios");
+const vectorStore = require("../services/vectorStore");
 
 class QueryController {
   async processQuery(req, res) {
@@ -9,6 +10,21 @@ class QueryController {
         return res.status(400).json({ error: "Query missing" });
       }
 
+      // 🔍 RETRIEVAL AGENT
+      const relevantChunks = await vectorStore.search(query, 4);
+
+      if (!relevantChunks || relevantChunks.length === 0) {
+        return res.json({
+          answer:
+            "I could not find relevant information in the uploaded documents. Please upload the correct files or rephrase your question."
+        });
+      }
+
+      const contextText = relevantChunks
+        .map((c, i) => `Context ${i + 1}: ${c.text}`)
+        .join("\n\n");
+
+      // 🧠 REASONING AGENT (Gemini)
       const response = await axios.post(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
         {
@@ -20,18 +36,15 @@ class QueryController {
                   text: `
 You are a professional customer support AI assistant.
 
-STRICT RESPONSE RULES:
-- Do NOT use markdown symbols (no *, **, #, ##, ---, tables, bullets).
-- Do NOT use emojis.
-- Do NOT use headings.
-- Do NOT use numbered or bulleted lists.
-- Write in clear, simple paragraphs.
-- Keep answers concise, professional, and human-like.
-- Respond exactly like ChatGPT in plain text.
-- If you lack user-specific data, explain politely and briefly.
-- Do not hallucinate personal details.
+Answer ONLY using the information below.
+Do not use markdown symbols.
+Do not use emojis.
+Write clear professional paragraphs.
 
-User question:
+DOCUMENT CONTEXT:
+${contextText}
+
+USER QUESTION:
 ${query}
 `
                 }
@@ -40,22 +53,19 @@ ${query}
           ]
         },
         {
-          params: {
-            key: process.env.GEMINI_API_KEY
-          }
+          params: { key: process.env.GEMINI_API_KEY }
         }
       );
 
       const answer =
         response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "I am unable to provide an answer at the moment.";
+        "Unable to generate answer.";
 
       res.json({ answer: answer.trim() });
-
     } catch (err) {
-      console.error("Gemini error:", err.response?.data || err.message);
+      console.error("Query error:", err.message);
       res.status(500).json({
-        error: "AI backend error. Please check API configuration."
+        error: "Failed to process query"
       });
     }
   }
