@@ -5,74 +5,130 @@ const verificationAgent = require('./agents/verificationAgent');
 const actionAgent = require('./agents/actionAgent');
 
 class Orchestrator {
-  async processQuery(query, options = {}) {
-    const workflow = {
-      query: query,
-      startTime: new Date(),
-      steps: [],
-      finalResponse: null,
-      status: 'processing'
-    };
-
+  async processQuery(query) {
     try {
-      // Step 1: Understanding
-      console.log('[Orchestrator] Starting Understanding Agent...');
-      const understanding = await understandingAgent.analyze(query);
-      workflow.steps.push(understanding);
+      console.log('\n[Orchestrator] Starting query processing:', query);
 
-      // Step 2: Retrieval
-      console.log('[Orchestrator] Starting Retrieval Agent...');
-      const retrieval = await retrievalAgent.retrieve(query, understanding.result);
-      workflow.steps.push(retrieval);
-
-      // Step 3: Reasoning
-      console.log('[Orchestrator] Starting Reasoning Agent...');
-      const reasoning = await reasoningAgent.reason(query, understanding.result, retrieval.result);
-      workflow.steps.push(reasoning);
-
-      // Step 4: Verification
-      console.log('[Orchestrator] Starting Verification Agent...');
-      const verification = await verificationAgent.verify(
+      const workflow = {
         query,
-        reasoning.result.answer,
-        retrieval.result
-      );
-      workflow.steps.push(verification);
-
-      // Step 5: Actions (optional)
-      if (options.generateActions) {
-        console.log('[Orchestrator] Starting Action Agent...');
-        const actions = await actionAgent.determineActions(
-          query,
-          understanding.result,
-          reasoning.result.answer,
-          verification.result
-        );
-        workflow.steps.push(actions);
-      }
-
-      // Build final response
-      workflow.finalResponse = {
-        answer: reasoning.result.answer,
-        confidence: reasoning.result.confidence,
-        sources: reasoning.result.sourcesUsed,
-        verification: verification.result,
-        understanding: understanding.result,
-        actions: workflow.steps.find(s => s.agent === 'Action')?.result
+        steps: [],
+        timestamp: new Date()
       };
 
-      workflow.status = 'completed';
-      workflow.endTime = new Date();
-      workflow.duration = workflow.endTime - workflow.startTime;
+      // Step 1: Understanding Agent - Analyze the query
+      console.log('[Orchestrator] Step 1: Understanding Agent');
+      const understanding = await understandingAgent.analyze(query);
+      workflow.steps.push({
+        agent: 'understanding',
+        status: 'completed',
+        output: understanding,
+        timestamp: new Date()
+      });
+      console.log('[Orchestrator] Understanding:', JSON.stringify(understanding, null, 2));
 
-      return workflow;
+      // Step 2: Retrieval Agent - Get relevant documents
+      console.log('[Orchestrator] Step 2: Retrieval Agent');
+      const retrievedContext = await retrievalAgent.search(query, understanding);
+      workflow.steps.push({
+        agent: 'retrieval',
+        status: 'completed',
+        output: {
+          documentsFound: retrievedContext.length,
+          sources: retrievedContext.map(doc => ({
+            filename: doc.metadata?.filename,
+            chunk: doc.metadata?.chunkIndex,
+            relevance: doc.score
+          }))
+        },
+        timestamp: new Date()
+      });
+      console.log('[Orchestrator] Retrieved', retrievedContext.length, 'relevant chunks');
+
+      // Check if we have context
+      if (retrievedContext.length === 0) {
+        workflow.steps.push({
+          agent: 'system',
+          status: 'warning',
+          output: 'No relevant documents found. Please upload documents first.',
+          timestamp: new Date()
+        });
+
+        return {
+          success: false,
+          answer: "I don't have any documents uploaded yet. Please upload your policy documents, product catalogs, or FAQs first, then I can answer questions based on them.",
+          confidence: 0,
+          sources: [],
+          workflow
+        };
+      }
+
+      // Step 3: Reasoning Agent - Generate answer using ONLY retrieved context
+      console.log('[Orchestrator] Step 3: Reasoning Agent');
+      const answer = await reasoningAgent.generateAnswer(
+        query,
+        understanding,
+        retrievedContext
+      );
+      workflow.steps.push({
+        agent: 'reasoning',
+        status: 'completed',
+        output: { answer },
+        timestamp: new Date()
+      });
+      console.log('[Orchestrator] Answer generated');
+
+      // Step 4: Verification Agent - Verify the answer
+      console.log('[Orchestrator] Step 4: Verification Agent');
+      const verification = await verificationAgent.verify(
+        query,
+        answer,
+        retrievedContext
+      );
+      workflow.steps.push({
+        agent: 'verification',
+        status: 'completed',
+        output: verification,
+        timestamp: new Date()
+      });
+      console.log('[Orchestrator] Verification:', JSON.stringify(verification, null, 2));
+
+      // Step 5: Action Agent - Determine if actions needed
+      console.log('[Orchestrator] Step 5: Action Agent');
+      const actions = await actionAgent.determineActions(
+        query,
+        understanding,
+        answer
+      );
+      workflow.steps.push({
+        agent: 'action',
+        status: 'completed',
+        output: actions,
+        timestamp: new Date()
+      });
+      console.log('[Orchestrator] Actions:', JSON.stringify(actions, null, 2));
+
+      // Build final response
+      const response = {
+        success: true,
+        answer: verification.isAccurate ? answer : verification.correctedAnswer || answer,
+        confidence: verification.confidence,
+        sources: retrievedContext.map(doc => ({
+          filename: doc.metadata?.filename || 'Unknown',
+          chunkIndex: doc.metadata?.chunkIndex,
+          text: doc.text?.substring(0, 150) + '...',
+          relevance: doc.score
+        })),
+        actions: actions.actions || [],
+        warnings: verification.warnings || [],
+        workflow
+      };
+
+      console.log('[Orchestrator] Query processing completed successfully\n');
+      return response;
 
     } catch (error) {
       console.error('[Orchestrator] Error:', error);
-      workflow.status = 'failed';
-      workflow.error = error.message;
-      workflow.endTime = new Date();
-      return workflow;
+      throw error;
     }
   }
 }

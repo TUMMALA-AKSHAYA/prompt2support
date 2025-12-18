@@ -4,60 +4,51 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 class ReasoningAgent {
-  async reason(query, understanding, retrievedData) {
-    const { retrievedChunks, sources } = retrievedData;
-    
-    const context = retrievedChunks
-      .map((chunk, idx) => `[Source ${idx + 1}: ${chunk.metadata.filename}]\n${chunk.text}`)
-      .join('\n\n---\n\n');
-
-    const prompt = `You are a Reasoning Agent in a customer support system. Use the retrieved information to answer the customer's query accurately.
-
-Customer Query: "${query}"
-
-Intent: ${understanding.intent}
-Priority: ${understanding.priority}
-
-Retrieved Information:
-${context}
-
-Instructions:
-1. Answer the customer's question directly and clearly
-2. Use ONLY information from the retrieved sources
-3. Cite which source you're using (e.g., "According to [Source 1]...")
-4. If information is insufficient, say so clearly
-5. Be helpful, professional, and concise
-6. Format your response in a customer-friendly way
-
-Provide your response:`;
-
+  async generateAnswer(query, understanding, retrievedContext) {
     try {
+      console.log('[ReasoningAgent] Generating answer from', retrievedContext.length, 'documents');
+
+      // Build context from retrieved documents
+      const contextText = retrievedContext
+        .map((doc, idx) => {
+          const source = doc.metadata?.filename || 'document';
+          return `[Source ${idx + 1}: ${source}]\n${doc.text}`;
+        })
+        .join('\n\n---\n\n');
+
+      // Create prompt that STRICTLY uses only the provided context
+      const prompt = `You are a customer support assistant. Answer the question using ONLY the information provided in the context below. Do not use any external knowledge.
+
+CONTEXT FROM UPLOADED DOCUMENTS:
+${contextText}
+
+CUSTOMER QUESTION: ${query}
+
+INSTRUCTIONS:
+1. Answer ONLY based on the context above
+2. If the answer is in the context, provide a clear, helpful response
+3. If the answer is NOT in the context, say: "I don't have that information in the uploaded documents. Please upload relevant documents or contact support."
+4. Quote relevant parts from the context to support your answer
+5. Be specific and cite which document the information came from
+6. Keep the answer concise and customer-friendly
+
+ANSWER:`;
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const answerText = response.text();
+      let answer = response.text();
 
-      return {
-        agent: 'Reasoning',
-        status: 'completed',
-        result: {
-          answer: answerText,
-          sourcesUsed: sources,
-          confidence: this.calculateConfidence(retrievedChunks)
-        },
-        timestamp: new Date()
-      };
+      // Clean up the response
+      answer = answer.trim();
+
+      console.log('[ReasoningAgent] Answer generated, length:', answer.length);
+
+      return answer;
+
     } catch (error) {
-      console.error('Reasoning Agent error:', error);
-      throw error;
+      console.error('[ReasoningAgent] Error:', error);
+      throw new Error(`Failed to generate answer: ${error.message}`);
     }
-  }
-
-  calculateConfidence(chunks) {
-    if (chunks.length === 0) return 'low';
-    const avgRelevance = chunks.reduce((sum, chunk) => sum + chunk.relevance, 0) / chunks.length;
-    if (avgRelevance > 0.7) return 'high';
-    if (avgRelevance > 0.4) return 'medium';
-    return 'low';
   }
 }
 
