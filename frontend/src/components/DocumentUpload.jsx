@@ -2,63 +2,40 @@ import { useState } from "react";
 
 export default function DocumentUpload({ onUpload }) {
   const [file, setFile] = useState(null);
-  const [status, setStatus] = useState("");
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setStatus("");
-  };
-
-  const handleUpload = async () => {
-    if (!file) {
-      setStatus("Please select a file first");
-      return;
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!file) return;
 
     const formData = new FormData();
-
-    // ⚠️ THIS KEY MUST BE "file"
     formData.append("file", file);
 
-    try {
-      await onUpload(formData);
-      setStatus("Document uploaded successfully");
-      setFile(null);
-    } catch (err) {
-      console.error(err);
-      setStatus("Upload failed");
-    }
+    onUpload(formData);
+    setFile(null);
   };
 
   return (
-    <div>
+    <form onSubmit={handleSubmit}>
       <input
         type="file"
-        accept=".pdf,.docx,.txt"
-        onChange={handleFileChange}
+        accept=".txt,.docx,.pdf"
+        onChange={(e) => setFile(e.target.files[0])}
       />
 
       <button
-        onClick={handleUpload}
+        type="submit"
         style={{
           marginTop: "10px",
-          padding: "8px 14px",
           background: "#ff8a1f",
           border: "none",
+          padding: "6px 14px",
           borderRadius: "8px",
-          color: "#111",
           cursor: "pointer",
           fontWeight: "600"
         }}
       >
         Upload
       </button>
-
-      {status && (
-        <div style={{ marginTop: "8px", fontSize: "13px" }}>
-          {status}
-        </div>
-      )}
-    </div>
+    </form>
   );
 }

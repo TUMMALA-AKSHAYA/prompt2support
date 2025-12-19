@@ -3,23 +3,17 @@ import DocumentUpload from "../components/DocumentUpload";
 import { useState } from "react";
 
 export default function Demo() {
-  /* =========================
-     STATE
-     ========================= */
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      text: "I’m here to help you understand your documents and resolve customer queries clearly and quickly."
+      text:
+        "I’m here to help you understand your documents and resolve customer queries clearly and quickly."
     }
   ]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-
-  // ✅ REAL uploaded files (no dummy data)
   const [uploadedFiles, setUploadedFiles] = useState([]);
-
-  // ✅ Upload status
   const [uploadStatus, setUploadStatus] = useState(null); // success | error | null
 
   /* =========================
@@ -31,7 +25,7 @@ export default function Demo() {
     const userMessage = input;
     setInput("");
 
-    setMessages(prev => [...prev, { role: "user", text: userMessage }]);
+    setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
     setLoading(true);
 
     try {
@@ -41,21 +35,23 @@ export default function Demo() {
         body: JSON.stringify({ query: userMessage })
       });
 
-      if (!res.ok) throw new Error("Backend error");
-
       const data = await res.json();
 
-      setMessages(prev => [
-        ...prev,
-        { role: "assistant", text: data.answer || "No response received from AI." }
-      ]);
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: "There was an issue processing your request. Please try again."
+          text:
+            data.answer ||
+            "I could not find relevant information in the uploaded documents."
+        }
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "There was an issue processing your request."
         }
       ]);
     } finally {
@@ -78,34 +74,22 @@ export default function Demo() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Upload failed");
+        throw new Error();
       }
 
-      const file = formData.get("file");
-      if (file) {
-        setUploadedFiles(prev => [...prev, file.name]);
-      }
-
+      setUploadedFiles([data.data.filename]);
       setUploadStatus("success");
 
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: "Document uploaded successfully. I will now use it to answer your questions."
+          text:
+            "Document uploaded successfully. I will now use it to answer your questions."
         }
       ]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setUploadStatus("error");
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          text: "Document upload failed. Please upload a TXT or DOCX file."
-        }
-      ]);
     }
   };
 
@@ -114,52 +98,49 @@ export default function Demo() {
      ========================= */
   return (
     <div className="demo-container">
-      {/* HEADER */}
       <div className="demo-header">
         <h1>Prompt2Support</h1>
         <span className="demo-badge">Demo</span>
       </div>
 
       <div className="demo-grid">
-        {/* LEFT PANEL */}
+        {/* LEFT */}
         <div className="demo-card">
           <h3 className="section-title">Knowledge Base</h3>
 
           <div className="upload-box">
             <DocumentUpload onUpload={handleUpload} />
-            <div className="supported-text">
-              Supported formats: TXT, DOCX (PDF preprocessing supported)
-            </div>
 
-            {/* Upload Status */}
             {uploadStatus === "success" && (
-              <div style={{ color: "#22c55e", fontSize: "13px", marginTop: "8px" }}>
+              <div style={{ color: "#22c55e", marginTop: "6px" }}>
                 Document uploaded successfully
               </div>
             )}
 
             {uploadStatus === "error" && (
-              <div style={{ color: "#ef4444", fontSize: "13px", marginTop: "8px" }}>
+              <div style={{ color: "#ef4444", marginTop: "6px" }}>
                 Upload failed
               </div>
             )}
+
+            <div className="supported-text">
+              Supported formats: TXT, DOCX (PDF preprocessing supported)
+            </div>
           </div>
 
-          {/* Uploaded Files */}
           <div className="uploaded-files">
             <div className="files-title">Uploaded files</div>
             {uploadedFiles.length === 0 ? (
               <div className="supported-text">No documents uploaded yet</div>
             ) : (
               <ul>
-                {uploadedFiles.map((file, idx) => (
-                  <li key={idx}>{file}</li>
+                {uploadedFiles.map((file, i) => (
+                  <li key={i}>{file}</li>
                 ))}
               </ul>
             )}
           </div>
 
-          {/* Sample Queries */}
           <div className="sample-queries">
             <div className="sample-title">Try sample questions</div>
             <ul>
@@ -169,7 +150,11 @@ export default function Demo() {
               <li onClick={() => setInput("How can I track my order?")}>
                 How can I track my order?
               </li>
-              <li onClick={() => setInput("What warranty does this product have?")}>
+              <li
+                onClick={() =>
+                  setInput("What warranty does this product have?")
+                }
+              >
                 What warranty does this product have?
               </li>
               <li onClick={() => setInput("Is EMI available for this purchase?")}>
@@ -179,7 +164,7 @@ export default function Demo() {
           </div>
         </div>
 
-        {/* RIGHT PANEL */}
+        {/* RIGHT */}
         <div className="demo-card chat-panel">
           <h3>AI Assistant</h3>
           <p className="ai-subtitle">Customer Support Agent</p>
@@ -190,25 +175,16 @@ export default function Demo() {
                 {m.text}
               </div>
             ))}
-
-            {loading && (
-              <div className="chat-bubble assistant">
-                <span className="typing">Prompt2Support is typing…</span>
-              </div>
-            )}
           </div>
 
           <div className="chat-input">
             <input
               placeholder="Ask a question about your documents"
               value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && sendMessage()}
-              disabled={loading}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             />
-            <button onClick={sendMessage} disabled={loading}>
-              Send
-            </button>
+            <button onClick={sendMessage}>Send</button>
           </div>
         </div>
       </div>

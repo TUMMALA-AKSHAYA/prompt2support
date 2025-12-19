@@ -20,6 +20,17 @@ class DocumentController {
         uploadedAt: new Date()
       });
 
+      // ================================
+      // STEP 3 — VERIFY CHUNKS (CRITICAL)
+      // ================================
+      console.log(
+        processed.chunks.map((c, i) => ({
+          i,
+          preview: c.text.slice(0, 80)
+        }))
+      );
+      // ================================
+
       for (let i = 0; i < processed.chunks.length; i++) {
         await vectorStore.addDocument({
           text: processed.chunks[i].text,
