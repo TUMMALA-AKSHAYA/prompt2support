@@ -34,52 +34,38 @@ if (!fs.existsSync(vectorDir)) {
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    timestamp: new Date(),
-    geminiKeyLoaded: !!process.env.GEMINI_API_KEY,
-    port: process.env.PORT || 5001
+    geminiKeyLoaded: !!process.env.GEMINI_API_KEY
   });
 });
 
 /* =====================
-   ROUTES (SAFE IMPORTS)
+   ROUTES
 ===================== */
-try {
-  const documentsRoutes = require("./routes/documents");
-  const queriesRoutes = require("./routes/queries");
-  const analyticsRoutes = require("./routes/analytics");
+const documentsRoutes = require("./routes/documents");
+const queriesRoutes = require("./routes/queries");
+const analyticsRoutes = require("./routes/analytics");
 
-  app.use("/api/documents", documentsRoutes);
-  app.use("/api/queries", queriesRoutes);
-  app.use("/api/analytics", analyticsRoutes);
-
-  console.log("✅ Routes loaded successfully");
-} catch (err) {
-  console.error("❌ Route loading failed:", err.message);
-}
+app.use("/api/documents", documentsRoutes);
+app.use("/api/queries", queriesRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 /* =====================
    ERROR HANDLER
 ===================== */
 app.use((err, req, res, next) => {
-  console.error("❌ Error:", err);
+  console.error(err);
   res.status(500).json({ error: err.message });
 });
 
 /* =====================
-   SERVER START
+   START SERVER
 ===================== */
 const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
-  console.log("\n🚀 PROMPT2SUPPORT BACKEND LIVE");
+  console.log("🚀 Prompt2Support backend running");
   console.log(`✅ Port: ${PORT}`);
-  console.log(`✅ Gemini API Key: ${process.env.GEMINI_API_KEY ? "LOADED" : "MISSING"}`);
-  console.log(`✅ Health: /health`);
-  console.log("\n📡 API ENDPOINTS");
-  console.log("POST /api/documents/upload");
-  console.log("GET  /api/documents/stats");
-  console.log("POST /api/queries/process");
-  console.log("GET  /api/queries/history\n");
+  console.log(`✅ Gemini key loaded: ${!!process.env.GEMINI_API_KEY}`);
 });
 
 module.exports = app;
