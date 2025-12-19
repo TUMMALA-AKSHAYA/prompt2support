@@ -2,7 +2,7 @@
   "name": "prompt2support-backend",
   "version": "1.0.0",
   "engines": {
-    "node": "18.x"
+    "node": ">=20.16.0"
   },
   "description": "Autonomous multi-agent customer support system",
   "main": "src/server.js",
