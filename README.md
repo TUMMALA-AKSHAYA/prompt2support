@@ -70,11 +70,23 @@ The application will be available at:
 - Backend: http://localhost:8000
 - Demo Page: http://localhost:3000/demo
 
-## 📁 Usage
+## 🚀 Deployment
 
-1. Upload documents (PDF, DOCX, TXT) in the Knowledge Base section
-2. Ask questions about your documents in the chat interface
-3. The AI assistant will provide answers based on the uploaded content
+The application is deployed on Render and available at:
+**https://p2p-gtpy.onrender.com**
+
+### Deployment Details
+- **Platform**: Render
+- **Type**: Full-stack web service
+- **Build Command**: `npm install`
+- **Start Command**: `npm start` (runs the full-stack application)
+
+## � Usage
+
+1. Visit the deployed application at https://p2p-gtpy.onrender.com
+2. Upload documents (PDF, DOCX, TXT) in the Knowledge Base section
+3. Ask questions about your documents in the chat interface
+4. The AI assistant will provide answers based on the uploaded content
 
 ## 🤖 Features
 
