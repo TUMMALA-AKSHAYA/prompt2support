@@ -15,7 +15,7 @@
     "serve": "^14.2.5"
   },
   "scripts": {
-    "start": "node ../start.sh",
+    "start": "craco start",
     "build": "craco build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
