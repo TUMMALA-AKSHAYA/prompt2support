@@ -15,6 +15,13 @@ let documentContents = new Map();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
+// Serve static files from frontend build in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(process.cwd(), '../frontend/build');
+  console.log('Serving frontend from:', frontendPath);
+  app.use(express.static(frontendPath));
+}
+
 // Multer config
 const upload = multer({
   dest: "uploads/",
@@ -143,12 +150,28 @@ app.post("/api/queries", (req, res) => {
   }
 });
 
+// Catch-all handler: send back React's index.html file for any non-API routes
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    const indexPath = path.join(process.cwd(), '../frontend/build/index.html');
+    res.sendFile(indexPath);
+  });
+}
+
 app.get("/", (req, res) => {
-  res.send("🚀 Prompt2Support backend running on port " + PORT);
+  if (process.env.NODE_ENV === 'production') {
+    const indexPath = path.join(process.cwd(), '../frontend/build/index.html');
+    res.sendFile(indexPath);
+  } else {
+    res.send("🚀 Prompt2Support backend running on port " + PORT);
+  }
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`);
   console.log(`✅ Upload endpoint: http://localhost:${PORT}/api/documents/upload`);
   console.log(`✅ Query endpoint: http://localhost:${PORT}/api/queries`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`✅ Serving frontend from build directory`);
+  }
 });
