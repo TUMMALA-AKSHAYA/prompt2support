@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* optional global polish */
+body {
+  background-color: #05070c;
+  color: #e5e7eb;
+}

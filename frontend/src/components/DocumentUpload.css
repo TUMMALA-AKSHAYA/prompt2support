@@ -1,0 +1,35 @@
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* Hide default ugly browser input */
+.hidden-file-input {
+  display: none;
+}
+
+/* Orange CTA button */
+.select-btn {
+  background: linear-gradient(135deg, #ff8a1f, #ff5f1f);
+  color: #000;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 8px 24px rgba(255, 138, 31, 0.25);
+}
+
+.select-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 32px rgba(255, 138, 31, 0.35);
+}
+
+/* File name text */
+.file-name {
+  font-size: 13px;
+  color: rgba(230, 232, 235, 0.7);
+  white-space: nowrap;
+}
