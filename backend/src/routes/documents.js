@@ -1,135 +1,80 @@
 import express from "express";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import documentProcessor from "../services/documentProcessor.js";
 import vectorStore from "../services/vectorStore.js";
 
 const router = express.Router();
 
-// In-memory storage for demo
-let uploadedDocuments = [];
-let documentContents = new Map(); // Store file contents
-
-// Multer config
-const upload = multer({
-  dest: "uploads/",
-  fileFilter: (req, file, cb) => {
-    const allowed = [".txt", ".docx", ".pdf"];
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, allowed.includes(ext));
-  },
-});
-
-// Helper function to read file content
-const readFileContent = async (filePath, originalName) => {
+/**
+ * POST /api/queries
+ * Body: { query: string }
+ */
+router.post("/", async (req, res) => {
   try {
-    const result = await documentProcessor.processDocument(filePath);
-    return result.fullText;
-  } catch (error) {
-    console.error('Error processing file:', error);
-    // Fallback to basic reading for TXT
-    const ext = path.extname(originalName).toLowerCase();
-    if (ext === '.txt') {
-      try {
-        return fs.readFileSync(filePath, 'utf8');
-      } catch (txtError) {
-        console.error('Error reading TXT file:', txtError);
-        return '';
-      }
-    }
-    return `Error processing ${originalName}: ${error.message}`;
-  }
-};
+    const { query } = req.body;
 
-// --------------------
-// Upload document
-// --------------------
-router.post("/upload", upload.single("file"), async (req, res) => {
-  try {
-    console.log("Upload request received");
-    if (!req.file) {
-      console.log("No file in request");
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-
-    console.log("File:", req.file.originalname, "Path:", req.file.path, "Size:", req.file.size);
-
-    // Process document to extract text and chunks
-    const processedDoc = await documentProcessor.processDocument(req.file.path);
-
-    console.log("Processed document, text length:", processedDoc.fullText.length, "Chunks:", processedDoc.chunks.length);
-
-    const doc = {
-      id: Date.now().toString(),
-      name: req.file.originalname,
-      path: req.file.path,
-      uploadedAt: new Date(),
-      size: req.file.size
-    };
-
-    uploadedDocuments.push(doc);
-    documentContents.set(doc.id, processedDoc.fullText);
-
-    // Add chunks to vector store
-    processedDoc.chunks.forEach(chunk => {
-      vectorStore.addDocument({
-        text: chunk.text,
-        metadata: {
-          filename: doc.name,
-          docId: doc.id,
-          chunkIndex: chunk.startChar,
-          totalChars: processedDoc.fullText.length
-        }
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Query is required",
       });
-    });
+    }
 
-    console.log("📄 Uploaded:", doc.name, "- Content length:", processedDoc.fullText.length, "- Chunks:", processedDoc.chunks.length);
+    console.log("🔍 Incoming query:", query);
 
-    res.json({
+    // ----------------------------
+    // 🔎 REAL RETRIEVAL STEP
+    // ----------------------------
+    
+    const retrievedChunks = await vectorStore.search(query, 4);
+
+
+    console.log(
+      "📦 Retrieved chunks:",
+      retrievedChunks.length
+    );
+
+    if (!retrievedChunks || retrievedChunks.length === 0) {
+      return res.json({
+        success: false,
+        answer:
+          "I could not find relevant information in the uploaded documents.",
+        source: "no_match",
+      });
+    }
+
+    // ----------------------------
+    // 🧠 BUILD CONTEXT
+    // ----------------------------
+    const context = retrievedChunks
+      .map((c, i) => `(${i + 1}) ${c.text}`)
+      .join("\n\n");
+
+    console.log("🧠 Context built:\n", context.substring(0, 300), "...");
+
+    // ----------------------------
+    // 🧾 FINAL ANSWER (NO LLM YET)
+    // ----------------------------
+    const answer = `
+Based on your uploaded documents, here is the most relevant information:
+
+${context}
+`;
+
+    return res.json({
       success: true,
-      message: "File uploaded successfully",
-      document: doc,
-      documents: uploadedDocuments,
+      answer,
+      source: "document_retrieval",
+      matches: retrievedChunks.map((c) => ({
+        filename: c.metadata?.filename,
+        score: c.score,
+      })),
     });
   } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({ error: "Upload failed" });
+    console.error("❌ Query error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to process query",
+    });
   }
 });
 
-// --------------------
-// Get uploaded documents
-// --------------------
-router.get("/", (req, res) => {
-  res.json({
-    success: true,
-    documents: uploadedDocuments,
-    count: uploadedDocuments.length
-  });
-});
-
-// --------------------
-// Get document content (for queries)
-// --------------------
-router.get("/content", (req, res) => {
-  const contents = Array.from(documentContents.entries()).map(([id, content]) => {
-    const doc = uploadedDocuments.find(d => d.id === id);
-    return {
-      id,
-      name: doc?.name || 'Unknown',
-      content: content.substring(0, 500) // First 500 chars for preview
-    };
-  });
-  
-  res.json({
-    success: true,
-    contents
-  });
-});
-
-// Export document contents for use in queries
-export { documentContents };
-
-// ✅ DEFAULT EXPORT
 export default router;

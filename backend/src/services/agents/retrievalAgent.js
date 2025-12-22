@@ -1,40 +1,14 @@
-const vectorStore = require('../vectorStore');
+import vectorStore from "../services/vectorStore.js";
 
 class RetrievalAgent {
-  async retrieve(query, understanding) {
-    const { intent, entities, category } = understanding;
-    
-    const enhancedQuery = this.buildEnhancedQuery(query, intent, entities, category);
-    const results = await vectorStore.search(enhancedQuery, 5);
-    
-    return {
-      agent: 'Retrieval',
-      status: 'completed',
-      result: {
-        retrievedChunks: results,
-        totalFound: results.length,
-        relevanceScores: results.map(r => r.relevance),
-        sources: [...new Set(results.map(r => r.metadata.filename))]
-      },
-      timestamp: new Date()
-    };
-  }
+  retrieve(query, limit = 5) {
+    const results = vectorStore.search(query, limit);
 
-  buildEnhancedQuery(originalQuery, intent, entities, category) {
-    let enhanced = originalQuery;
-    
-    if (intent) {
-      enhanced += ` ${intent.replace('_', ' ')}`;
-    }
-    
-    Object.values(entities).forEach(value => {
-      if (typeof value === 'string') {
-        enhanced += ` ${value}`;
-      }
-    });
-    
-    return enhanced;
+    return results.map(r => ({
+      text: r.text,
+      metadata: r.metadata
+    }));
   }
 }
 
-module.exports = new RetrievalAgent();
+export default new RetrievalAgent();

@@ -69,7 +69,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// Root endpoint
+// Root endpointy
 app.get("/", (req, res) => {
   res.send("🚀 Prompt2Support backend is running");
 });

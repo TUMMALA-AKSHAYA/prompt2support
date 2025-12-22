@@ -1,82 +1,49 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from 'url';
-import { generateEmbedding } from "../utils/embeddings.js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
-const vectorsDir = path.join(__dirname, "../../vectors");
-const vectorsPath = path.join(vectorsDir, "vectors.json");
+class VectorStore {
+  constructor() {
+    this.vectors = [];
+  }
 
-if (!fs.existsSync(vectorsDir)) {
-  fs.mkdirSync(vectorsDir, { recursive: true });
-}
+  async addDocument({ text, metadata }) {
+    if (!text || text.length < 20) return;
 
-let store = [];
+    const embedding = await embedModel.embedContent(text);
 
-// Load existing vectors
-if (fs.existsSync(vectorsPath)) {
-  try {
-    store = JSON.parse(fs.readFileSync(vectorsPath, "utf-8"));
-  } catch (e) {
-    store = [];
+    this.vectors.push({
+      embedding: embedding.embedding.values,
+      text,
+      metadata
+    });
+
+    console.log("🧠 Embedded chunk:", metadata.filename);
+  }
+
+  cosineSimilarity(a, b) {
+    const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
+    const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+    const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    return dot / (magA * magB);
+  }
+
+  async search(query, topK = 5) {
+    if (this.vectors.length === 0) return [];
+
+    const queryEmbedding = await embedModel.embedContent(query);
+    const qVec = queryEmbedding.embedding.values;
+
+    const scored = this.vectors.map(doc => ({
+      ...doc,
+      relevance: this.cosineSimilarity(qVec, doc.embedding)
+    }));
+
+    return scored
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, topK);
   }
 }
 
-function save() {
-  fs.writeFileSync(vectorsPath, JSON.stringify(store, null, 2));
-}
-
-function cosineSimilarity(a, b) {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-10);
-}
-
-const vectorStore = {
-  addDocument({ text, metadata }) {
-    const embedding = generateEmbedding(text);
-    store.push({ text, embedding, metadata });
-    save();
-  },
-
-
-  search(query, limit = 8) {
-  const qEmbedding = generateEmbedding(query);
-
-  return store
-    .map(doc => {
-      let score = 0;
-      for (let i = 0; i < qEmbedding.length; i++) {
-        score += qEmbedding[i] * doc.embedding[i];
-      }
-      return { ...doc, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-},
-
-
-
-  getStats() {
-    return {
-      totalVectors: store.length
-    };
-  },
-
-  clear() {
-    store = [];
-    save();
-  }
-};
-
-export default vectorStore;
+export default new VectorStore();

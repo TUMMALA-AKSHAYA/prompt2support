@@ -1,73 +1,60 @@
-
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 class UnderstandingAgent {
   async analyze(query) {
-    const prompt = `You are an Understanding Agent in a customer support system.
-Analyze the customer query and extract structured information.
+    // 🔹 Fast deterministic fallback
+    const q = query.toLowerCase();
 
-Customer Query: "${query}"
+    let intent = "general_inquiry";
+    if (q.includes("return")) intent = "return_refund";
+    else if (q.includes("track")) intent = "order_status";
+    else if (q.includes("warranty")) intent = "warranty";
+    else if (q.includes("emi")) intent = "billing";
 
-Respond ONLY with valid JSON.
+    // 🔹 LLM enrichment (safe)
+    try {
+      const prompt = `
+Extract intent & metadata from this customer query.
+Respond ONLY in JSON.
 
-JSON schema:
+Query: "${query}"
+
+Schema:
 {
-  "intent": "billing | product_issue | order_status | warranty | technical_support | return_refund | general_inquiry | send_email | check_email | summarize_email | schedule_meeting | check_calendar | reschedule_meeting",
-  "entities": {
-    "orderId": "",
-    "product": "",
-    "amount": "",
-    "date": "",
-    "time": "",
-    "email": "",
-    "subject": "",
-    "body": "",
-    "participants": []
-  },
+  "intent": string,
   "sentiment": "positive | neutral | negative | urgent",
   "priority": "low | medium | high | critical",
-  "category": "billing | product | order | support | email | calendar | general",
-  "requiresHumanEscalation": true | false
-}`;
+  "requiresHumanEscalation": boolean
+}
+`;
 
-    try {
       const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const responseText = response.text();
-
-      const cleanedResponse = responseText
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
+      const text = result.response.text()
+        .replace(/```json|```/g, "")
         .trim();
 
-      return {
-        agent: 'Understanding',
-        status: 'completed',
-        result: JSON.parse(cleanedResponse),
-        timestamp: new Date()
-      };
-    } catch (error) {
-      console.error('Understanding Agent error:', error);
+      const parsed = JSON.parse(text);
 
       return {
-        agent: 'Understanding',
-        status: 'completed',
-        result: {
-          intent: 'general_inquiry',
-          entities: {},
-          sentiment: 'neutral',
-          priority: 'medium',
-          category: 'general',
-          requiresHumanEscalation: false
-        },
-        timestamp: new Date(),
-        error: error.message
+        intent: parsed.intent || intent,
+        sentiment: parsed.sentiment || "neutral",
+        priority: parsed.priority || "medium",
+        requiresHumanEscalation: parsed.requiresHumanEscalation ?? false
+      };
+
+    } catch {
+      // ✅ SAFE FALLBACK
+      return {
+        intent,
+        sentiment: "neutral",
+        priority: "medium",
+        requiresHumanEscalation: false
       };
     }
   }
 }
 
-module.exports = new UnderstandingAgent();
+export default new UnderstandingAgent();

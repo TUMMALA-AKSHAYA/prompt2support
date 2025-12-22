@@ -1,37 +1,59 @@
 import express from "express";
-import orchestrator from "../services/orchestrator.js";
+import vectorStore from "../services/vectorStore.js";
+import reasoningAgent from "../services/agents/reasoningAgent.js";
+import verificationAgent from "../services/agents/verificationAgent.js";
 
 const router = express.Router();
 
-// --------------------
-// Handle user queries
-// --------------------
 router.post("/", async (req, res) => {
   try {
     const { query } = req.body;
 
     if (!query) {
-      return res.status(400).json({ error: "Query is required" });
+      return res.status(400).json({ success: false, error: "Query required" });
     }
 
-    console.log("❓ User query:", query);
+    // 🔎 Retrieval
+    const retrievedChunks = await vectorStore.search(query, 4);
 
-    // Use orchestrator to handle the query with AI and vector search
-    const answer = await orchestrator.handleQuery(query);
+    if (retrievedChunks.length === 0) {
+      return res.json({
+        success: false,
+        answer: "No relevant information found in uploaded documents.",
+      });
+    }
 
-    res.json({
+    // 🧠 Reasoning
+    const answer = await reasoningAgent.answer(query, retrievedChunks);
+
+    // 🛡️ Verification
+    const verification = await verificationAgent.verify(
+      query,
+      answer,
+      retrievedChunks
+    );
+
+    // 🚨 Escalation logic
+    if (verification.finalVerdict === "escalate_to_human") {
+      return res.json({
+        success: false,
+        answer:
+          "This query requires human assistance. Please contact support.",
+        verification,
+      });
+    }
+
+    return res.json({
       success: true,
-      answer: answer,
-      source: "ai_generated"
+      answer,
+      verification,
+      sources: retrievedChunks.map((c) => c.metadata?.filename),
     });
-  } catch (error) {
-    console.error("Query error:", error);
-    res.status(500).json({
-      success: false,
-      error: "There was an issue processing your request. Please try again."
-    });
+
+  } catch (err) {
+    console.error("❌ Query error:", err);
+    res.status(500).json({ success: false, error: "Query failed" });
   }
 });
 
-// ✅ DEFAULT EXPORT
 export default router;
