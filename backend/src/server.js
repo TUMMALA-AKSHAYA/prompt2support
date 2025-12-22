@@ -1,25 +1,67 @@
-require("dotenv").config();
-const http = require("http");
+require('dotenv').config();
+const express = require('express'); // Make sure express is installed
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 
+// Services
+const vectorStore = require('./services/vectorStore');
+
+// Routes
+const documentsRoutes = require('./routes/documents');
+const queriesRoutes = require('./routes/queries');
+const analyticsRoutes = require('./routes/analytics');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Create necessary directories
+const uploadDir = path.join(__dirname, '../uploads');
+const vectorDir = path.join(__dirname, '../vectors');
+
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(vectorDir)) fs.mkdirSync(vectorDir, { recursive: true });
+
+// Initialize vector store
+vectorStore.initialize().catch(err => console.error('Vector store init error:', err));
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date(),
+    geminiKeyLoaded: !!process.env.GEMINI_API_KEY,
+    port: process.env.PORT || 5001
+  });
+});
+
+// API Routes
+app.use('/api/documents', documentsRoutes);
+app.use('/api/queries', queriesRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
+
+// Start server
 const PORT = process.env.PORT || 5001;
-
-const server = http.createServer(async (req, res) => {
-  if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok" }));
-    return;
-  }
-
-  if (req.url === "/") {
-    res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Prompt2Support backend is running");
-    return;
-  }
-
-  res.writeHead(404, { "Content-Type": "text/plain" });
-  res.end("Not Found");
+app.listen(PORT, () => {
+  console.log(`\n🚀 PROMPT2SUPPORT BACKEND`);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Gemini API key: ${process.env.GEMINI_API_KEY ? 'LOADED' : 'MISSING!'}`);
+  console.log(`✅ Health check: http://localhost:${PORT}/health`);
+  console.log(`\n📡 API Endpoints:`);
+  console.log(`   POST http://localhost:${PORT}/api/documents/upload`);
+  console.log(`   GET  http://localhost:${PORT}/api/documents/stats`);
+  console.log(`   POST http://localhost:${PORT}/api/queries/process`);
+  console.log(`   GET  http://localhost:${PORT}/api/queries/history\n`);
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
-});
+module.exports = app;

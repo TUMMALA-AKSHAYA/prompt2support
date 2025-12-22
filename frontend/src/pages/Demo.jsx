@@ -69,7 +69,8 @@ export default function Demo() {
     try {
       setUploadStatus(null);
 
-      const res = await fetch("/api/documents/upload", {
+      const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
+      const res = await fetch(`${API_BASE}/api/documents/upload`, {
         method: "POST",
         body: formData
       });

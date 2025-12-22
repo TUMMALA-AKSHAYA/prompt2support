@@ -1,13 +1,4 @@
-/**
- * Simple local embedding generator
- * --------------------------------
- * No external API
- * No OpenAI
- * No Gemini dependency
- * Deterministic & stable
- * Hackathon-safe and demo-proof
- */
-
+ 
 function generateEmbedding(text) {
   // Fixed-size vector
   const VECTOR_SIZE = 128;
