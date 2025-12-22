@@ -5,53 +5,59 @@ import path from "path";
 import fs from "fs";
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 10000;
 
-// In-memory storage
+// In-memory storage (demo)
 let uploadedDocuments = [];
 let documentContents = new Map();
 
 // Middleware
-app.use(cors({ origin: true }));
+app.use(cors({ origin: "*" }));
 app.use(express.json());
-
-// Serve frontend in production
-if (process.env.NODE_ENV === "production") {
-  const frontendPath = path.join(process.cwd(), "frontend", "build");
-  console.log("Serving frontend from:", frontendPath);
-  app.use(express.static(frontendPath));
-}
 
 // Multer config
 const upload = multer({
   dest: "uploads/",
   fileFilter: (req, file, cb) => {
     const allowed = [".txt", ".docx", ".pdf"];
-    cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
   },
 });
 
-// Read file content
+// Read file content (demo)
 const readFileContent = (filePath, originalName) => {
   try {
     if (originalName.endsWith(".txt")) {
       return fs.readFileSync(filePath, "utf8");
     }
-    return `Demo content from ${originalName}`;
+    return `Demo content extracted from ${originalName}`;
   } catch {
     return "";
   }
 };
 
+// Search documents
+const searchInDocuments = (query) => {
+  const q = query.toLowerCase();
+  for (const content of documentContents.values()) {
+    if (content.toLowerCase().includes(q)) {
+      return content.slice(0, 200) + "...";
+    }
+  }
+  return null;
+};
+
 // Routes
 app.post("/api/documents/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
 
   const content = readFileContent(req.file.path, req.file.originalname);
   const doc = {
     id: Date.now().toString(),
     name: req.file.originalname,
-    uploadedAt: new Date(),
   };
 
   uploadedDocuments.push(doc);
@@ -64,30 +70,25 @@ app.post("/api/queries", (req, res) => {
   const { query } = req.body;
   if (!query) return res.status(400).json({ error: "Query required" });
 
-  for (const content of documentContents.values()) {
-    if (content.toLowerCase().includes(query.toLowerCase())) {
-      return res.json({
-        success: true,
-        answer: content.slice(0, 200),
-      });
-    }
+  const match = searchInDocuments(query);
+  if (match) {
+    return res.json({
+      success: true,
+      answer: `From uploaded documents: ${match}`,
+    });
   }
 
-  res.json({
+  return res.json({
     success: true,
     answer: "Please upload documents to get specific answers.",
   });
 });
 
-// React fallback
-if (process.env.NODE_ENV === "production") {
-  app.get("*", (_, res) => {
-    res.sendFile(
-      path.join(process.cwd(), "frontend", "build", "index.html")
-    );
-  });
-}
+// Health check
+app.get("/health", (_, res) => {
+  res.json({ status: "ok" });
+});
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Backend running on port ${PORT}`);
 });
