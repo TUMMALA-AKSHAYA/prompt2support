@@ -2,7 +2,9 @@
   "name": "prompt2support-frontend",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:8000",
+
+  "proxy": "http://localhost:4000",
+
   "dependencies": {
     "@craco/craco": "^7.1.0",
     "axios": "^1.13.2",

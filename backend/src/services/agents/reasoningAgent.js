@@ -5,22 +5,17 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 class ReasoningAgent {
   async answer(query, retrievedChunks) {
-    // Build STRICT context
     const context = retrievedChunks
       .map(
         (c, i) =>
           `[Source ${i + 1}: ${c.metadata?.filename}]\n${c.text}`
       )
-      .join("\n\n---\n\n");
+      .join("\n\n");
 
     const prompt = `
-You are a customer support AI.
-
-RULES (VERY IMPORTANT):
-- Use ONLY the information from CONTEXT
-- Do NOT use outside knowledge
-- If answer is NOT in context, say:
-  "I do not have this information in the uploaded documents."
+Answer the question using ONLY the information below.
+If the answer is not present, say:
+"I could not find this information in the uploaded documents."
 
 CONTEXT:
 ${context}

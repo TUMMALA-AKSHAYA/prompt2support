@@ -4,7 +4,7 @@ import pdf from "pdf-parse";
 import mammoth from "mammoth";
 
 const CHUNK_SIZE = 500;
-const CHUNK_OVERLAP = 100;
+const CHUNK_OVERLAP = 150;
 
 class DocumentProcessor {
   async processDocument(filePath) {
@@ -29,16 +29,14 @@ class DocumentProcessor {
     fullText = this.cleanText(fullText);
     const chunks = this.chunkText(fullText);
 
-    return {
-      fullText,
-      chunks
-    };
+    return { fullText, chunks };
   }
 
   cleanText(text) {
     return text
+      .replace(/\r/g, "")
+      .replace(/\n{2,}/g, "\n")
       .replace(/\s+/g, " ")
-      .replace(/\n+/g, "\n")
       .trim();
   }
 

@@ -19,29 +19,38 @@ class VectorStore {
       metadata
     });
 
-    console.log("🧠 Embedded chunk:", metadata.filename);
+    console.log("🧠 Stored chunk:", metadata.filename);
   }
 
   cosineSimilarity(a, b) {
-    const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
-    const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-    const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+    const dot = a.reduce((s, v, i) => s + v * b[i], 0);
+    const magA = Math.sqrt(a.reduce((s, v) => s + v * v, 0));
+    const magB = Math.sqrt(b.reduce((s, v) => s + v * v, 0));
     return dot / (magA * magB);
   }
 
   async search(query, topK = 5) {
     if (this.vectors.length === 0) return [];
 
+    const normalizedQuery = query.toLowerCase();
     const queryEmbedding = await embedModel.embedContent(query);
     const qVec = queryEmbedding.embedding.values;
 
-    const scored = this.vectors.map(doc => ({
-      ...doc,
-      relevance: this.cosineSimilarity(qVec, doc.embedding)
-    }));
+    const scored = this.vectors.map(doc => {
+      const semantic = this.cosineSimilarity(qVec, doc.embedding);
+      const keywordBonus = doc.text.toLowerCase().includes(normalizedQuery)
+        ? 0.15
+        : 0;
+
+      return {
+        ...doc,
+        score: semantic + keywordBonus
+      };
+    });
 
     return scored
-      .sort((a, b) => b.relevance - a.relevance)
+      .filter(d => d.score > 0.25)
+      .sort((a, b) => b.score - a.score)
       .slice(0, topK);
   }
 }
