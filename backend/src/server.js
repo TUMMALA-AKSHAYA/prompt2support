@@ -1,19 +1,17 @@
-import 'dotenv/config';
+import "dotenv/config";
 import express from "express";
 import session from "express-session";
 import cors from "cors";
 
-// --------------------
-// Route imports
-// --------------------
-import googleAuth from "./routes/googleAuth.js";
-import actionRoutes from "./routes/actionRoutes.js";
-import analyticsRoutes from "./routes/analytics.js";
-import documentRoutes from "./routes/documents.js";
-import queryRoutes from "./routes/queries.js";
+// ✅ CORRECT paths (src/routes)
+import googleAuth from "./src/routes/googleAuth.js";
+import actionRoutes from "./src/routes/actionRoutes.js";
+import analyticsRoutes from "./src/routes/analytics.js";
+import documentRoutes from "./src/routes/documents.js";
+import queryRoutes from "./src/routes/queries.js";
 
 const app = express();
-const PORT = process.env.PORT || 8000; // ✅ FIXED
+const PORT = process.env.PORT || 8000;
 
 console.log("✅ Using in-memory storage for demo");
 
@@ -43,11 +41,6 @@ app.use(
     secret: process.env.SESSION_SECRET || "secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: false,
-      httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24,
-    },
   })
 );
 
