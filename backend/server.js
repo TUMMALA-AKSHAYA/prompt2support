@@ -4,18 +4,18 @@ import session from "express-session";
 import cors from "cors";
 
 // --------------------
-// Route imports (LOCAL)
+// Route imports (FIXED PATHS)
 // --------------------
-import googleAuth from "./routes/googleAuth.js";
-import actionRoutes from "./routes/actionRoutes.js";
-import analyticsRoutes from "./routes/analytics.js";
-import documentRoutes from "./routes/documents.js";
-import queryRoutes from "./routes/queries.js";
+import googleAuth from "./src/routes/googleAuth.js";
+import actionRoutes from "./src/routes/actionRoutes.js";
+import analyticsRoutes from "./src/routes/analytics.js";
+import documentRoutes from "./src/routes/documents.js";
+import queryRoutes from "./src/routes/queries.js";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-console.log("✅ Prompt2Support (src server) running");
+console.log("✅ Prompt2Support backend (Render entry)");
 
 // --------------------
 // Middleware
@@ -30,14 +30,13 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logger
 app.use((req, res, next) => {
-  console.log(`[SRC] ${req.method} ${req.url}`);
+  console.log(`[REQ] ${req.method} ${req.url}`);
   next();
 });
 
 // --------------------
-// Session (for OAuth / future auth)
+// Session
 // --------------------
 app.use(
   session({
@@ -57,24 +56,23 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/queries", queryRoutes);
 
 // --------------------
-// Health check
+// Health
 // --------------------
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  res.json({
     status: "ok",
-    server: "src",
-    timestamp: new Date().toISOString(),
+    env: "render",
+    time: new Date().toISOString(),
   });
 });
 
-// Root
 app.get("/", (req, res) => {
-  res.send("🚀 Prompt2Support backend (src) is running");
+  res.send("🚀 Prompt2Support backend is running (Render)");
 });
 
 // --------------------
 // Start server
 // --------------------
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 [SRC] Backend listening on port ${PORT}`);
+  console.log(`🚀 Backend listening on port ${PORT}`);
 });
