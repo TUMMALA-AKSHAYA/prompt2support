@@ -1,4 +1,6 @@
-import vectorStore from "../services/vectorStore.js";
+
+import vectorStore from "../vectorStore.js";
+
 
 class RetrievalAgent {
   retrieve(query, limit = 5) {
