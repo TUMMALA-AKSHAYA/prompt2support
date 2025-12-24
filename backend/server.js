@@ -3,9 +3,7 @@ import express from "express";
 import session from "express-session";
 import cors from "cors";
 
-// --------------------
-// Route imports (FIXED PATHS)
-// --------------------
+// ✅ CORRECT paths (src/routes)
 import googleAuth from "./src/routes/googleAuth.js";
 import actionRoutes from "./src/routes/actionRoutes.js";
 import analyticsRoutes from "./src/routes/analytics.js";
@@ -15,7 +13,7 @@ import queryRoutes from "./src/routes/queries.js";
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-console.log("✅ Prompt2Support backend (Render entry)");
+console.log("✅ Using in-memory storage for demo");
 
 // --------------------
 // Middleware
@@ -31,7 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.url}`);
   next();
 });
 
@@ -40,7 +38,7 @@ app.use((req, res, next) => {
 // --------------------
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
+    secret: process.env.SESSION_SECRET || "secret",
     resave: false,
     saveUninitialized: false,
   })
@@ -59,20 +57,16 @@ app.use("/api/queries", queryRoutes);
 // Health
 // --------------------
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    env: "render",
-    time: new Date().toISOString(),
-  });
+  res.status(200).json({ status: "ok" });
 });
 
 app.get("/", (req, res) => {
-  res.send("🚀 Prompt2Support backend is running (Render)");
+  res.send("🚀 Prompt2Support backend is running");
 });
 
 // --------------------
 // Start server
 // --------------------
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Backend listening on port ${PORT}`);
+  console.log(`🚀 Backend running on port ${PORT}`);
 });
