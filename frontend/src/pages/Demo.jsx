@@ -2,7 +2,7 @@ import "../styles/demo.css";
 import DocumentUpload from "../components/DocumentUpload";
 import { useState } from "react";
 
-const BACKEND_URL = "https://prompt2support-q4sh.onrender.com";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 export default function Demo() {
   const [messages, setMessages] = useState([
