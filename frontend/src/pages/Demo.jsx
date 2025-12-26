@@ -2,6 +2,8 @@ import "../styles/demo.css";
 import DocumentUpload from "../components/DocumentUpload";
 import { useState } from "react";
 
+const BACKEND_URL = "https://prompt2support-q4sh.onrender.com";
+
 export default function Demo() {
   const [messages, setMessages] = useState([
     {
@@ -15,6 +17,7 @@ export default function Demo() {
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
 
+  // 🔹 SEND QUERY
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -25,7 +28,7 @@ export default function Demo() {
     setMessages(prev => [...prev, { role: "user", text: userText }]);
 
     try {
-      const res = await fetch("http://localhost:8000/api/queries", {
+      const res = await fetch(`${BACKEND_URL}/api/queries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: userText })
@@ -43,7 +46,8 @@ export default function Demo() {
               : "I couldn't find relevant information in the uploaded documents."
         }
       ]);
-    } catch {
+    } catch (err) {
+      console.error(err);
       setMessages(prev => [
         ...prev,
         {
@@ -56,6 +60,7 @@ export default function Demo() {
     }
   };
 
+  // 🔹 FILE UPLOAD CALLBACK
   const handleUploaded = filename => {
     if (filename) {
       setUploadedFiles(prev => [...prev, filename]);
@@ -82,7 +87,12 @@ export default function Demo() {
         {/* LEFT */}
         <div className="demo-card">
           <h3>Knowledge Base</h3>
-          <DocumentUpload onUploaded={handleUploaded} />
+
+          <DocumentUpload
+            onUploaded={handleUploaded}
+            uploadUrl={`${BACKEND_URL}/api/documents/upload`}
+          />
+
           <p className="supported-text">Supported formats: TXT, DOCX, PDF</p>
 
           {uploadedFiles.map((f, i) => (
@@ -115,7 +125,9 @@ export default function Demo() {
                 {m.text}
               </div>
             ))}
-            {loading && <div className="chat-bubble assistant">Thinking…</div>}
+            {loading && (
+              <div className="chat-bubble assistant">Thinking…</div>
+            )}
           </div>
 
           <div className="chat-input">
