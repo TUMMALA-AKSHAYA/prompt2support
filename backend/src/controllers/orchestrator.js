@@ -8,9 +8,9 @@ export async function runOrchestrator(query) {
   const understanding = await understandingAgent.analyze(query);
 
   // 2️⃣ Retrieve
-  const retrieval = await retrievalAgent.retrieve(query, understanding);
+  const retrievedChunks = retrievalAgent.retrieve(query, 5);
 
-  if (!retrieval.result.retrievedChunks.length) {
+  if (!retrievedChunks.length) {
     return {
       success: false,
       answer:
@@ -19,32 +19,31 @@ export async function runOrchestrator(query) {
   }
 
   // 3️⃣ Reason
-  const answer = await reasoningAgent.generateAnswer(
+  const answer = await reasoningAgent.answer(
     query,
-    understanding,
-    retrieval.result.retrievedChunks
+    retrievedChunks
   );
 
   // 4️⃣ Verify
   const verification = await verificationAgent.verify(
     query,
     answer,
-    retrieval.result
+    retrievedChunks
   );
 
-  if (verification.result.finalVerdict !== "approved") {
+  if (verification.finalVerdict !== "approved") {
     return {
       success: false,
       answer:
         "This query requires human assistance or more documentation.",
-      verification: verification.result
+      verification
     };
   }
 
   return {
     success: true,
     answer,
-    verification: verification.result,
-    sources: retrieval.result.sources
+    verification,
+    sources: retrievedChunks.map(c => c.metadata?.filename).filter(Boolean)
   };
 }
