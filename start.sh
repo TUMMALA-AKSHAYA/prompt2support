@@ -14,14 +14,14 @@ echo "🔧 Starting backend server..."
 cd backend
 node server.js &
 BACKEND_PID=$!
-echo "✅ Backend started (PID: $BACKEND_PID) on http://localhost:5000"
+echo "✅ Backend started (PID: $BACKEND_PID) on http://localhost:8000"
 
 # Wait for backend to start
 sleep 3
 
 # Test backend
 echo "🧪 Testing backend..."
-curl -s http://localhost:5000/health > /dev/null
+curl -s http://localhost:8000/health > /dev/null
 if [ $? -eq 0 ]; then
     echo "✅ Backend is responding"
 else

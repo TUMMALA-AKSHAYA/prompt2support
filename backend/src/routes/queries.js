@@ -1,5 +1,5 @@
 import express from "express";
-import { runOrchestrator } from "../controllers/orchestrator.js";
+import orchestrator from "../services/orchestrator.js";
 
 const router = express.Router();
 
@@ -7,16 +7,19 @@ router.post("/", async (req, res) => {
   const { query } = req.body;
 
   if (!query) {
-    return res.status(400).json({ success: false, error: "Query required" });
+    return res.json({
+      success: false,
+      answer: "Query is required"
+    });
   }
 
-  try {
-    const result = await runOrchestrator(query);
-    res.json(result);
-  } catch (err) {
-    console.error("❌ Orchestration error:", err);
-    res.status(500).json({ success: false, error: "Query failed" });
-  }
+  const result = await orchestrator.handleQuery(query);
+
+  res.json({
+    success: true,
+    answer: result.answer, // ALWAYS STRING
+    sources: result.sources || []
+  });
 });
 
 export default router;

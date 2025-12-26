@@ -8,18 +8,36 @@ class VectorStore {
     this.vectors = [];
   }
 
+  // 🔹 Split text into chunks
+  chunkText(text, chunkSize = 800, overlap = 100) {
+    const chunks = [];
+    let start = 0;
+
+    while (start < text.length) {
+      const end = start + chunkSize;
+      chunks.push(text.slice(start, end));
+      start = end - overlap;
+    }
+
+    return chunks;
+  }
+
   async addDocument({ text, metadata }) {
-    if (!text || text.length < 20) return;
+    const chunks = this.chunkText(text);
 
-    const embedding = await embedModel.embedContent(text);
+    for (const chunk of chunks) {
+      if (chunk.trim().length < 50) continue;
 
-    this.vectors.push({
-      embedding: embedding.embedding.values,
-      text,
-      metadata
-    });
+      const embedding = await embedModel.embedContent(chunk);
 
-    console.log("🧠 Stored chunk:", metadata.filename);
+      this.vectors.push({
+        embedding: embedding.embedding.values,
+        text: chunk,
+        metadata,
+      });
+    }
+
+    console.log(`🧠 Indexed ${chunks.length} chunks from ${metadata.filename}`);
   }
 
   cosineSimilarity(a, b) {
@@ -29,27 +47,18 @@ class VectorStore {
     return dot / (magA * magB);
   }
 
-  async search(query, topK = 5) {
+  async search(query, topK = 4) {
     if (this.vectors.length === 0) return [];
 
-    const normalizedQuery = query.toLowerCase();
-    const queryEmbedding = await embedModel.embedContent(query);
-    const qVec = queryEmbedding.embedding.values;
+    const qEmbedding = await embedModel.embedContent(query);
+    const qVec = qEmbedding.embedding.values;
 
-    const scored = this.vectors.map(doc => {
-      const semantic = this.cosineSimilarity(qVec, doc.embedding);
-      const keywordBonus = doc.text.toLowerCase().includes(normalizedQuery)
-        ? 0.15
-        : 0;
-
-      return {
+    return this.vectors
+      .map(doc => ({
         ...doc,
-        score: semantic + keywordBonus
-      };
-    });
-
-    return scored
-      .filter(d => d.score > 0.25)
+        score: this.cosineSimilarity(qVec, doc.embedding),
+      }))
+      .filter(d => d.score > 0.2)
       .sort((a, b) => b.score - a.score)
       .slice(0, topK);
   }

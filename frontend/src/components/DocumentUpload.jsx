@@ -1,41 +1,27 @@
-import { useState } from "react";
+export default function DocumentUpload({ onUploaded }) {
+  const upload = async (file) => {
+    const form = new FormData();
+    form.append("file", file);
 
-export default function DocumentUpload({ onUpload }) {
-  const [file, setFile] = useState(null);
+    const res = await fetch("http://localhost:8000/api/documents/upload", {
+      method: "POST",
+      body: form,
+    });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!file) return;
+    const data = await res.json();
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    onUpload(formData);
-    setFile(null);
+    if (data.success && typeof onUploaded === "function") {
+      onUploaded(data.filename);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       <input
         type="file"
         accept=".txt,.docx,.pdf"
-        onChange={(e) => setFile(e.target.files[0])}
+        onChange={(e) => upload(e.target.files[0])}
       />
-
-      <button
-        type="submit"
-        style={{
-          marginTop: "10px",
-          background: "#ff8a1f",
-          border: "none",
-          padding: "6px 14px",
-          borderRadius: "8px",
-          cursor: "pointer",
-          fontWeight: "600"
-        }}
-      >
-        Upload
-      </button>
-    </form>
+    </div>
   );
 }
